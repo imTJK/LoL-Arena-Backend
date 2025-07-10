@@ -1,10 +1,4 @@
-        .filters {
-            display: flex;
-            justify-content: center;
-            gap: 15px;
-            margin-bottom: 20px;
-            flex-wrap: wrap;
-        }<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="de">
 <head>
     <meta charset="UTF-8">
@@ -140,6 +134,31 @@
             color: #c89b3c;
         }
 
+        .filters {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .filter-btn {
+            padding: 10px 20px;
+            background: rgba(0, 0, 0, 0.5);
+            color: #f0f0f0;
+            border: 2px solid #c89b3c;
+            border-radius: 25px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 14px;
+        }
+
+        .filter-btn:hover, .filter-btn.active {
+            background: #c89b3c;
+            color: #0f1419;
+            transform: translateY(-2px);
+        }
+
         .sort-controls {
             display: flex;
             justify-content: center;
@@ -165,23 +184,6 @@
         .sort-select:hover, .sort-select:focus {
             background: rgba(200, 155, 60, 0.2);
             outline: none;
-        }
-
-        .filter-btn {
-            padding: 10px 20px;
-            background: rgba(0, 0, 0, 0.5);
-            color: #f0f0f0;
-            border: 2px solid #c89b3c;
-            border-radius: 25px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            font-size: 14px;
-        }
-
-        .filter-btn:hover, .filter-btn.active {
-            background: #c89b3c;
-            color: #0f1419;
-            transform: translateY(-2px);
         }
 
         .champions-grid {
@@ -412,26 +414,6 @@
             text-align: center;
         }
 
-        .api-info {
-            background: rgba(0, 0, 0, 0.5);
-            padding: 20px;
-            border-radius: 10px;
-            margin-bottom: 20px;
-            border-left: 4px solid #c89b3c;
-        }
-
-        .api-info h3 {
-            color: #c89b3c;
-            margin-bottom: 10px;
-        }
-
-        .api-info code {
-            background: rgba(0, 0, 0, 0.7);
-            padding: 2px 6px;
-            border-radius: 4px;
-            color: #f0e6d2;
-        }
-
         @media (max-width: 768px) {
             .champions-grid {
                 grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
@@ -451,6 +433,15 @@
 
             .riot-input, .region-select {
                 min-width: auto;
+            }
+
+            .sort-controls {
+                flex-direction: column;
+                gap: 10px;
+            }
+
+            .sort-controls label {
+                margin-right: 0 !important;
             }
         }
     </style>
@@ -480,15 +471,6 @@
                     <strong id="player-name"></strong> - Level <span id="player-level"></span>
                     <br>Mastery Daten geladen! 🎮
                 </div>
-            </div>
-
-            <div class="api-info">
-                <h3>⚙️ Für echte Riot API Integration:</h3>
-                <p>1. <strong>Riot Developer Account:</strong> <code>developer.riotgames.com</code></p>
-                <p>2. <strong>Backend Server:</strong> Node.js/Python für API Calls</p>
-                <p>3. <strong>API Key:</strong> In Backend verwenden (nie im Frontend!)</p>
-                <p>4. <strong>Rate Limits:</strong> 100 calls/2min (Personal Key)</p>
-                <button class="demo-btn" onclick="loadDemoData()">🎲 Demo Daten laden</button>
             </div>
 
             <div class="stats">
@@ -551,18 +533,26 @@
 
         <div style="text-align: center;">
             <button class="reset-btn" onclick="resetProgress()">Arena Fortschritt zurücksetzen</button>
-            <button class="demo-btn" onclick="resetMastery()">Mastery Daten löschen</button>
+            <button class="demo-btn" onclick="loadDemoData()">🎲 Demo Daten laden</button>
         </div>
     </div>
 
     <script>
+        // ⚙️ API Configuration - Railway Backend Integration
+        const API_BASE_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.protocol === 'file:' 
+            ? 'http://localhost:3000'  // Lokal
+            : 'https://lol-arena-backend-production.up.railway.app';  // Railway Production
+
+        console.log('🔗 API Base URL:', API_BASE_URL);
+
         const champions = [
             {name: "Aatrox", role: "fighter", id: "Aatrox", key: "266"},
             {name: "Ahri", role: "mage", id: "Ahri", key: "103"},
             {name: "Akali", role: "assassin", id: "Akali", key: "84"},
             {name: "Akshan", role: "marksman", id: "Akshan", key: "166"},
             {name: "Alistar", role: "tank", id: "Alistar", key: "12"},
-            {name: "Amumu", role: "tank", id: "Amumu", key: "32"},
+            {name: "Ambessa", role: "fighter", id: "Ambessa", key: "799"},
+            {name: "Amumu", role: "tank", id: "Ammu", key: "32"},
             {name: "Anivia", role: "mage", id: "Anivia", key: "34"},
             {name: "Annie", role: "mage", id: "Annie", key: "1"},
             {name: "Aphelios", role: "marksman", id: "Aphelios", key: "523"},
@@ -752,7 +742,7 @@
 
             try {
                 // Backend API Call
-                const response = await fetch(`http://localhost:3000/api/player/${encodeURIComponent(gameName)}/${encodeURIComponent(tagLine)}/${region}`);
+                const response = await fetch(`${API_BASE_URL}/api/player/${encodeURIComponent(gameName)}/${encodeURIComponent(tagLine)}/${region}`);
                 
                 if (!response.ok) {
                     const error = await response.json();
@@ -848,26 +838,6 @@
                 showLoading(false);
                 renderChampions();
             }, 1500);
-        }
-
-        function processMasteryData(masteries, summoner) {
-            masteryData = {};
-            
-            masteries.forEach(mastery => {
-                masteryData[mastery.championId] = {
-                    championLevel: mastery.championLevel,
-                    championPoints: mastery.championPoints,
-                    lastPlayTime: mastery.lastPlayTime
-                };
-            });
-            
-            localStorage.setItem('masteryData', JSON.stringify(masteryData));
-            
-            document.getElementById('player-name').textContent = summoner.name;
-            document.getElementById('player-level').textContent = summoner.summonerLevel;
-            document.getElementById('player-info').style.display = 'block';
-            
-            renderChampions();
         }
 
         function createChampionCard(champion) {
@@ -1037,16 +1007,6 @@
             }
         }
 
-        function resetMastery() {
-            if (confirm('Willst du wirklich alle Mastery Daten löschen?')) {
-                masteryData = {};
-                localStorage.removeItem('masteryData');
-                document.getElementById('player-info').style.display = 'none';
-                document.getElementById('riot-id').value = '';
-                renderChampions();
-            }
-        }
-
         function showLoading(show) {
             document.getElementById('loading').style.display = show ? 'block' : 'none';
             document.getElementById('fetch-btn').disabled = show;
@@ -1090,66 +1050,6 @@
 
         // Initial render
         renderChampions();
-
-        // Backend API Code Beispiel (Node.js/Express)
-        /*
-        
-        // server.js - Backend für echte Riot API Integration
-        const express = require('express');
-        const axios = require('axios');
-        const app = express();
-
-        const RIOT_API_KEY = 'RGAPI-your-api-key-here'; // Nie im Frontend!
-        
-        // Proxy für Account API (EUROPE region)
-        app.get('/api/riot/account/v1/accounts/by-riot-id/:gameName/:tagLine', async (req, res) => {
-            try {
-                const { gameName, tagLine } = req.params;
-                const response = await axios.get(
-                    `https://europe.api.riotgames.com/riot/account/v1/accounts/by-riot-id/${gameName}/${tagLine}`,
-                    { headers: { 'X-Riot-Token': RIOT_API_KEY } }
-                );
-                res.json(response.data);
-            } catch (error) {
-                res.status(error.response?.status || 500).json({ error: error.message });
-            }
-        });
-
-        // Proxy für Summoner API
-        app.get('/api/riot/summoner/v4/summoners/by-puuid/:puuid', async (req, res) => {
-            try {
-                const { puuid } = req.params;
-                const { region } = req.query;
-                const response = await axios.get(
-                    `https://${region}.api.riotgames.com/lol/summoner/v4/summoners/by-puuid/${puuid}`,
-                    { headers: { 'X-Riot-Token': RIOT_API_KEY } }
-                );
-                res.json(response.data);
-            } catch (error) {
-                res.status(error.response?.status || 500).json({ error: error.message });
-            }
-        });
-
-        // Proxy für Champion Mastery API
-        app.get('/api/riot/champion-mastery/v4/champion-masteries/by-summoner/:summonerId', async (req, res) => {
-            try {
-                const { summonerId } = req.params;
-                const { region } = req.query;
-                const response = await axios.get(
-                    `https://${region}.api.riotgames.com/lol/champion-mastery/v4/champion-masteries/by-summoner/${summonerId}`,
-                    { headers: { 'X-Riot-Token': RIOT_API_KEY } }
-                );
-                res.json(response.data);
-            } catch (error) {
-                res.status(error.response?.status || 500).json({ error: error.message });
-            }
-        });
-
-        app.listen(3000, () => {
-            console.log('Riot API Proxy running on port 3000');
-        });
-        
-        */
     </script>
 </body>
 </html>
