@@ -1,0 +1,1155 @@
+        .filters {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LoL Arena Win Tracker - Mit Riot Integration</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0f1419 0%, #1e3c72 100%);
+            color: #f0f0f0;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            color: #c89b3c;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+        }
+
+        .riot-login {
+            background: rgba(0, 0, 0, 0.4);
+            padding: 20px;
+            border-radius: 15px;
+            margin-bottom: 20px;
+            border: 2px solid #c89b3c;
+        }
+
+        .login-form {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .riot-input {
+            padding: 12px 20px;
+            background: rgba(0, 0, 0, 0.5);
+            border: 2px solid #c89b3c;
+            border-radius: 25px;
+            color: #f0f0f0;
+            font-size: 16px;
+            min-width: 200px;
+        }
+
+        .riot-input::placeholder {
+            color: #888;
+        }
+
+        .region-select {
+            padding: 12px 20px;
+            background: rgba(0, 0, 0, 0.5);
+            border: 2px solid #c89b3c;
+            border-radius: 25px;
+            color: #f0f0f0;
+            font-size: 16px;
+        }
+
+        .fetch-btn {
+            padding: 12px 25px;
+            background: #c89b3c;
+            color: #0f1419;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
+
+        .fetch-btn:hover {
+            background: #f0e6d2;
+            transform: translateY(-2px);
+        }
+
+        .fetch-btn:disabled {
+            background: #666;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .player-info {
+            display: none;
+            background: rgba(0, 150, 0, 0.2);
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            border: 1px solid #00ff00;
+        }
+
+        .stats {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+
+        .stat-item {
+            text-align: center;
+            padding: 15px;
+            background: rgba(200, 155, 60, 0.2);
+            border-radius: 10px;
+            border: 1px solid #c89b3c;
+            min-width: 120px;
+        }
+
+        .stat-number {
+            font-size: 2em;
+            font-weight: bold;
+            color: #c89b3c;
+        }
+
+        .sort-controls {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-bottom: 20px;
+            padding: 15px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 10px;
+            backdrop-filter: blur(5px);
+        }
+
+        .sort-select {
+            padding: 8px 15px;
+            background: rgba(0, 0, 0, 0.5);
+            color: #f0f0f0;
+            border: 2px solid #c89b3c;
+            border-radius: 20px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .sort-select:hover, .sort-select:focus {
+            background: rgba(200, 155, 60, 0.2);
+            outline: none;
+        }
+
+        .filter-btn {
+            padding: 10px 20px;
+            background: rgba(0, 0, 0, 0.5);
+            color: #f0f0f0;
+            border: 2px solid #c89b3c;
+            border-radius: 25px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 14px;
+        }
+
+        .filter-btn:hover, .filter-btn.active {
+            background: #c89b3c;
+            color: #0f1419;
+            transform: translateY(-2px);
+        }
+
+        .champions-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .champion-card {
+            background: rgba(0, 0, 0, 0.4);
+            border-radius: 15px;
+            padding: 15px;
+            text-align: center;
+            transition: all 0.3s ease;
+            border: 2px solid transparent;
+            backdrop-filter: blur(5px);
+            position: relative;
+        }
+
+        .champion-card:hover {
+            transform: translateY(-5px);
+            border-color: #c89b3c;
+            box-shadow: 0 10px 25px rgba(200, 155, 60, 0.3);
+        }
+
+        .champion-card.completed {
+            background: rgba(0, 150, 0, 0.3);
+            border-color: #00ff00;
+        }
+
+        .champion-card.high-mastery {
+            background: rgba(200, 155, 60, 0.2);
+            border-color: #c89b3c;
+        }
+
+        .champion-image {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            margin: 0 auto 12px;
+            border: 3px solid #c89b3c;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(45deg, #c89b3c, #f0e6d2);
+            font-size: 20px;
+            font-weight: bold;
+            color: #0f1419;
+            position: relative;
+        }
+
+        .champion-image img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: transform 0.3s ease;
+        }
+
+        .champion-card:hover .champion-image img {
+            transform: scale(1.1);
+        }
+
+        .mastery-badge {
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            background: #c89b3c;
+            color: #0f1419;
+            border-radius: 50%;
+            width: 25px;
+            height: 25px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: bold;
+            border: 2px solid #f0e6d2;
+        }
+
+        .mastery-badge.level-7 { background: #ff6b6b; }
+        .mastery-badge.level-6 { background: #4ecdc4; }
+        .mastery-badge.level-5 { background: #45b7d1; }
+
+        .champion-name {
+            font-size: 1.1em;
+            margin-bottom: 8px;
+            color: #f0f0f0;
+            font-weight: 600;
+        }
+
+        .champion-role {
+            font-size: 0.9em;
+            color: #c89b3c;
+            margin-bottom: 8px;
+        }
+
+        .mastery-info {
+            font-size: 0.8em;
+            color: #aaa;
+            margin-bottom: 12px;
+            line-height: 1.3;
+        }
+
+        .mastery-points {
+            color: #c89b3c;
+            font-weight: bold;
+        }
+
+        .win-checkbox {
+            position: relative;
+            display: inline-block;
+        }
+
+        .win-checkbox input[type="checkbox"] {
+            position: absolute;
+            opacity: 0;
+            cursor: pointer;
+        }
+
+        .checkmark {
+            display: inline-block;
+            width: 40px;
+            height: 40px;
+            background: rgba(0, 0, 0, 0.5);
+            border: 2px solid #c89b3c;
+            border-radius: 50%;
+            position: relative;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .checkmark:after {
+            content: "";
+            position: absolute;
+            display: none;
+            left: 12px;
+            top: 8px;
+            width: 8px;
+            height: 16px;
+            border: solid white;
+            border-width: 0 3px 3px 0;
+            transform: rotate(45deg);
+        }
+
+        .win-checkbox input:checked ~ .checkmark {
+            background: #00ff00;
+            border-color: #00ff00;
+        }
+
+        .win-checkbox input:checked ~ .checkmark:after {
+            display: block;
+        }
+
+        .search-bar {
+            width: 100%;
+            max-width: 400px;
+            margin: 0 auto 20px;
+            padding: 12px 20px;
+            background: rgba(0, 0, 0, 0.5);
+            border: 2px solid #c89b3c;
+            border-radius: 25px;
+            color: #f0f0f0;
+            font-size: 16px;
+            text-align: center;
+        }
+
+        .search-bar::placeholder {
+            color: #888;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 20px;
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 20px 0;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #c89b3c, #f0e6d2);
+            transition: width 0.5s ease;
+            border-radius: 10px;
+        }
+
+        .reset-btn, .demo-btn {
+            padding: 12px 25px;
+            background: rgba(150, 0, 0, 0.7);
+            color: white;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: all 0.3s ease;
+            margin: 10px;
+        }
+
+        .demo-btn {
+            background: rgba(0, 150, 150, 0.7);
+        }
+
+        .reset-btn:hover {
+            background: rgba(200, 0, 0, 0.9);
+            transform: translateY(-2px);
+        }
+
+        .demo-btn:hover {
+            background: rgba(0, 200, 200, 0.9);
+            transform: translateY(-2px);
+        }
+
+        .loading {
+            text-align: center;
+            color: #c89b3c;
+            font-size: 18px;
+            margin: 20px 0;
+        }
+
+        .error {
+            background: rgba(200, 0, 0, 0.3);
+            color: #ff6b6b;
+            padding: 15px;
+            border-radius: 10px;
+            margin: 20px 0;
+            text-align: center;
+        }
+
+        .api-info {
+            background: rgba(0, 0, 0, 0.5);
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            border-left: 4px solid #c89b3c;
+        }
+
+        .api-info h3 {
+            color: #c89b3c;
+            margin-bottom: 10px;
+        }
+
+        .api-info code {
+            background: rgba(0, 0, 0, 0.7);
+            padding: 2px 6px;
+            border-radius: 4px;
+            color: #f0e6d2;
+        }
+
+        @media (max-width: 768px) {
+            .champions-grid {
+                grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+                gap: 15px;
+            }
+            
+            .champion-image {
+                width: 60px;
+                height: 60px;
+                font-size: 16px;
+            }
+
+            .login-form {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .riot-input, .region-select {
+                min-width: auto;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🏆 LoL Arena Tracker - Mit Riot Integration</h1>
+            
+            <div class="riot-login">
+                <h3 style="color: #c89b3c; margin-bottom: 15px;">🔗 Riot Account Verbinden</h3>
+                <div class="login-form">
+                    <input type="text" class="riot-input" id="riot-id" placeholder="Riot ID (z.B. Spielername#TAG)">
+                    <select class="region-select" id="region">
+                        <option value="euw1">EUW</option>
+                        <option value="eun1">EUNE</option>
+                        <option value="na1">NA</option>
+                        <option value="kr">Korea</option>
+                        <option value="jp1">Japan</option>
+                    </select>
+                    <button class="fetch-btn" id="fetch-btn" onclick="fetchRiotData()">
+                        Mastery laden
+                    </button>
+                </div>
+                
+                <div class="player-info" id="player-info">
+                    <strong id="player-name"></strong> - Level <span id="player-level"></span>
+                    <br>Mastery Daten geladen! 🎮
+                </div>
+            </div>
+
+            <div class="api-info">
+                <h3>⚙️ Für echte Riot API Integration:</h3>
+                <p>1. <strong>Riot Developer Account:</strong> <code>developer.riotgames.com</code></p>
+                <p>2. <strong>Backend Server:</strong> Node.js/Python für API Calls</p>
+                <p>3. <strong>API Key:</strong> In Backend verwenden (nie im Frontend!)</p>
+                <p>4. <strong>Rate Limits:</strong> 100 calls/2min (Personal Key)</p>
+                <button class="demo-btn" onclick="loadDemoData()">🎲 Demo Daten laden</button>
+            </div>
+
+            <div class="stats">
+                <div class="stat-item">
+                    <div class="stat-number" id="completed-count">0</div>
+                    <div>Arena Wins</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-number" id="total-count">0</div>
+                    <div>Champions</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-number" id="mastery-count">0</div>
+                    <div>Mit Mastery</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-number" id="completion-percentage">0%</div>
+                    <div>Fortschritt</div>
+                </div>
+            </div>
+            <div class="progress-bar">
+                <div class="progress-fill" id="progress-fill"></div>
+            </div>
+        </div>
+
+        <input type="text" class="search-bar" id="search-input" placeholder="Champion suchen...">
+
+        <div class="filters">
+            <button class="filter-btn active" data-filter="all">Alle</button>
+            <button class="filter-btn" data-filter="completed">Arena Wins</button>
+            <button class="filter-btn" data-filter="pending">Offen</button>
+            <button class="filter-btn" data-filter="high-mastery">Hohe Mastery</button>
+            <button class="filter-btn" data-filter="assassin">Assassine</button>
+            <button class="filter-btn" data-filter="fighter">Kämpfer</button>
+            <button class="filter-btn" data-filter="mage">Magier</button>
+            <button class="filter-btn" data-filter="marksman">Schütze</button>
+            <button class="filter-btn" data-filter="support">Unterstützer</button>
+            <button class="filter-btn" data-filter="tank">Tank</button>
+        </div>
+
+        <div class="sort-controls">
+            <label for="sort-select" style="color: #c89b3c; font-weight: bold; margin-right: 10px;">Sortierung:</label>
+            <select id="sort-select" class="sort-select">
+                <option value="alphabetical">Alphabetisch</option>
+                <option value="mastery-points">Mastery Punkte</option>
+                <option value="mastery-level">Mastery Level</option>
+                <option value="last-played">Zuletzt gespielt</option>
+            </select>
+        </div>
+
+        <div id="loading" class="loading" style="display: none;">
+            Lade Mastery Daten... ⏳
+        </div>
+
+        <div id="error" class="error" style="display: none;"></div>
+
+        <div class="champions-grid" id="champions-grid">
+            <!-- Champions werden hier per JavaScript eingefügt -->
+        </div>
+
+        <div style="text-align: center;">
+            <button class="reset-btn" onclick="resetProgress()">Arena Fortschritt zurücksetzen</button>
+            <button class="demo-btn" onclick="resetMastery()">Mastery Daten löschen</button>
+        </div>
+    </div>
+
+    <script>
+        const champions = [
+            {name: "Aatrox", role: "fighter", id: "Aatrox", key: "266"},
+            {name: "Ahri", role: "mage", id: "Ahri", key: "103"},
+            {name: "Akali", role: "assassin", id: "Akali", key: "84"},
+            {name: "Akshan", role: "marksman", id: "Akshan", key: "166"},
+            {name: "Alistar", role: "tank", id: "Alistar", key: "12"},
+            {name: "Amumu", role: "tank", id: "Amumu", key: "32"},
+            {name: "Anivia", role: "mage", id: "Anivia", key: "34"},
+            {name: "Annie", role: "mage", id: "Annie", key: "1"},
+            {name: "Aphelios", role: "marksman", id: "Aphelios", key: "523"},
+            {name: "Ashe", role: "marksman", id: "Ashe", key: "22"},
+            {name: "Aurelion Sol", role: "mage", id: "AurelionSol", key: "136"},
+            {name: "Azir", role: "mage", id: "Azir", key: "268"},
+            {name: "Bard", role: "support", id: "Bard", key: "432"},
+            {name: "Bel'Veth", role: "fighter", id: "Belveth", key: "200"},
+            {name: "Blitzcrank", role: "tank", id: "Blitzcrank", key: "53"},
+            {name: "Brand", role: "mage", id: "Brand", key: "63"},
+            {name: "Braum", role: "support", id: "Braum", key: "201"},
+            {name: "Briar", role: "fighter", id: "Briar", key: "233"},
+            {name: "Caitlyn", role: "marksman", id: "Caitlyn", key: "51"},
+            {name: "Camille", role: "fighter", id: "Camille", key: "164"},
+            {name: "Cassiopeia", role: "mage", id: "Cassiopeia", key: "69"},
+            {name: "Cho'Gath", role: "tank", id: "Chogath", key: "31"},
+            {name: "Corki", role: "marksman", id: "Corki", key: "42"},
+            {name: "Darius", role: "fighter", id: "Darius", key: "122"},
+            {name: "Diana", role: "fighter", id: "Diana", key: "131"},
+            {name: "Dr. Mundo", role: "tank", id: "DrMundo", key: "36"},
+            {name: "Draven", role: "marksman", id: "Draven", key: "119"},
+            {name: "Ekko", role: "assassin", id: "Ekko", key: "245"},
+            {name: "Elise", role: "mage", id: "Elise", key: "60"},
+            {name: "Evelynn", role: "assassin", id: "Evelynn", key: "28"},
+            {name: "Ezreal", role: "marksman", id: "Ezreal", key: "81"},
+            {name: "Fiddlesticks", role: "mage", id: "Fiddlesticks", key: "9"},
+            {name: "Fiora", role: "fighter", id: "Fiora", key: "114"},
+            {name: "Fizz", role: "assassin", id: "Fizz", key: "105"},
+            {name: "Galio", role: "tank", id: "Galio", key: "3"},
+            {name: "Gangplank", role: "fighter", id: "Gangplank", key: "41"},
+            {name: "Garen", role: "fighter", id: "Garen", key: "86"},
+            {name: "Gnar", role: "fighter", id: "Gnar", key: "150"},
+            {name: "Gragas", role: "tank", id: "Gragas", key: "79"},
+            {name: "Graves", role: "marksman", id: "Graves", key: "104"},
+            {name: "Gwen", role: "fighter", id: "Gwen", key: "887"},
+            {name: "Hecarim", role: "fighter", id: "Hecarim", key: "120"},
+            {name: "Heimerdinger", role: "mage", id: "Heimerdinger", key: "74"},
+            {name: "Hwei", role: "mage", id: "Hwei", key: "910"},
+            {name: "Illaoi", role: "fighter", id: "Illaoi", key: "420"},
+            {name: "Irelia", role: "fighter", id: "Irelia", key: "39"},
+            {name: "Ivern", role: "support", id: "Ivern", key: "427"},
+            {name: "Janna", role: "support", id: "Janna", key: "40"},
+            {name: "Jarvan IV", role: "tank", id: "JarvanIV", key: "59"},
+            {name: "Jax", role: "fighter", id: "Jax", key: "24"},
+            {name: "Jayce", role: "fighter", id: "Jayce", key: "126"},
+            {name: "Jhin", role: "marksman", id: "Jhin", key: "202"},
+            {name: "Jinx", role: "marksman", id: "Jinx", key: "222"},
+            {name: "Kai'Sa", role: "marksman", id: "Kaisa", key: "145"},
+            {name: "Kalista", role: "marksman", id: "Kalista", key: "429"},
+            {name: "Karma", role: "support", id: "Karma", key: "43"},
+            {name: "Karthus", role: "mage", id: "Karthus", key: "30"},
+            {name: "Kassadin", role: "assassin", id: "Kassadin", key: "38"},
+            {name: "Katarina", role: "assassin", id: "Katarina", key: "55"},
+            {name: "Kayle", role: "fighter", id: "Kayle", key: "10"},
+            {name: "Kayn", role: "fighter", id: "Kayn", key: "141"},
+            {name: "Kennen", role: "mage", id: "Kennen", key: "85"},
+            {name: "Kha'Zix", role: "assassin", id: "Khazix", key: "121"},
+            {name: "Kindred", role: "marksman", id: "Kindred", key: "203"},
+            {name: "Kled", role: "fighter", id: "Kled", key: "240"},
+            {name: "Kog'Maw", role: "marksman", id: "KogMaw", key: "96"},
+            {name: "K'Sante", role: "tank", id: "KSante", key: "897"},
+            {name: "LeBlanc", role: "assassin", id: "Leblanc", key: "7"},
+            {name: "Lee Sin", role: "fighter", id: "LeeSin", key: "64"},
+            {name: "Leona", role: "tank", id: "Leona", key: "89"},
+            {name: "Lillia", role: "fighter", id: "Lillia", key: "876"},
+            {name: "Lissandra", role: "mage", id: "Lissandra", key: "127"},
+            {name: "Lucian", role: "marksman", id: "Lucian", key: "236"},
+            {name: "Lulu", role: "support", id: "Lulu", key: "117"},
+            {name: "Lux", role: "mage", id: "Lux", key: "99"},
+            {name: "Malphite", role: "tank", id: "Malphite", key: "54"},
+            {name: "Malzahar", role: "mage", id: "Malzahar", key: "90"},
+            {name: "Maokai", role: "tank", id: "Maokai", key: "57"},
+            {name: "Master Yi", role: "assassin", id: "MasterYi", key: "11"},
+            {name: "Milio", role: "support", id: "Milio", key: "902"},
+            {name: "Miss Fortune", role: "marksman", id: "MissFortune", key: "21"},
+            {name: "Mordekaiser", role: "fighter", id: "Mordekaiser", key: "82"},
+            {name: "Morgana", role: "support", id: "Morgana", key: "25"},
+            {name: "Naafiri", role: "assassin", id: "Naafiri", key: "950"},
+            {name: "Nami", role: "support", id: "Nami", key: "267"},
+            {name: "Nasus", role: "fighter", id: "Nasus", key: "75"},
+            {name: "Nautilus", role: "tank", id: "Nautilus", key: "111"},
+            {name: "Neeko", role: "mage", id: "Neeko", key: "518"},
+            {name: "Nidalee", role: "assassin", id: "Nidalee", key: "76"},
+            {name: "Nilah", role: "marksman", id: "Nilah", key: "895"},
+            {name: "Nocturne", role: "assassin", id: "Nocturne", key: "56"},
+            {name: "Nunu", role: "tank", id: "Nunu", key: "20"},
+            {name: "Olaf", role: "fighter", id: "Olaf", key: "2"},
+            {name: "Orianna", role: "mage", id: "Orianna", key: "61"},
+            {name: "Ornn", role: "tank", id: "Ornn", key: "516"},
+            {name: "Pantheon", role: "fighter", id: "Pantheon", key: "80"},
+            {name: "Poppy", role: "tank", id: "Poppy", key: "78"},
+            {name: "Pyke", role: "support", id: "Pyke", key: "555"},
+            {name: "Qiyana", role: "assassin", id: "Qiyana", key: "246"},
+            {name: "Quinn", role: "marksman", id: "Quinn", key: "133"},
+            {name: "Rakan", role: "support", id: "Rakan", key: "497"},
+            {name: "Rammus", role: "tank", id: "Rammus", key: "33"},
+            {name: "Rek'Sai", role: "fighter", id: "RekSai", key: "421"},
+            {name: "Rell", role: "tank", id: "Rell", key: "526"},
+            {name: "Renata", role: "support", id: "Renata", key: "888"},
+            {name: "Renekton", role: "fighter", id: "Renekton", key: "58"},
+            {name: "Rengar", role: "assassin", id: "Rengar", key: "107"},
+            {name: "Riven", role: "fighter", id: "Riven", key: "92"},
+            {name: "Rumble", role: "fighter", id: "Rumble", key: "68"},
+            {name: "Ryze", role: "mage", id: "Ryze", key: "13"},
+            {name: "Samira", role: "marksman", id: "Samira", key: "360"},
+            {name: "Sejuani", role: "tank", id: "Sejuani", key: "113"},
+            {name: "Senna", role: "support", id: "Senna", key: "235"},
+            {name: "Seraphine", role: "support", id: "Seraphine", key: "147"},
+            {name: "Sett", role: "fighter", id: "Sett", key: "875"},
+            {name: "Shaco", role: "assassin", id: "Shaco", key: "35"},
+            {name: "Shen", role: "tank", id: "Shen", key: "98"},
+            {name: "Shyvana", role: "fighter", id: "Shyvana", key: "102"},
+            {name: "Singed", role: "tank", id: "Singed", key: "27"},
+            {name: "Sion", role: "tank", id: "Sion", key: "14"},
+            {name: "Sivir", role: "marksman", id: "Sivir", key: "15"},
+            {name: "Skarner", role: "fighter", id: "Skarner", key: "72"},
+            {name: "Smolder", role: "marksman", id: "Smolder", key: "901"},
+            {name: "Sona", role: "support", id: "Sona", key: "37"},
+            {name: "Soraka", role: "support", id: "Soraka", key: "16"},
+            {name: "Swain", role: "mage", id: "Swain", key: "50"},
+            {name: "Sylas", role: "mage", id: "Sylas", key: "517"},
+            {name: "Syndra", role: "mage", id: "Syndra", key: "134"},
+            {name: "Tahm Kench", role: "support", id: "TahmKench", key: "223"},
+            {name: "Taliyah", role: "mage", id: "Taliyah", key: "163"},
+            {name: "Talon", role: "assassin", id: "Talon", key: "91"},
+            {name: "Taric", role: "support", id: "Taric", key: "44"},
+            {name: "Teemo", role: "marksman", id: "Teemo", key: "17"},
+            {name: "Thresh", role: "support", id: "Thresh", key: "412"},
+            {name: "Tristana", role: "marksman", id: "Tristana", key: "18"},
+            {name: "Trundle", role: "fighter", id: "Trundle", key: "48"},
+            {name: "Tryndamere", role: "fighter", id: "Tryndamere", key: "23"},
+            {name: "Twisted Fate", role: "mage", id: "TwistedFate", key: "4"},
+            {name: "Twitch", role: "marksman", id: "Twitch", key: "29"},
+            {name: "Udyr", role: "fighter", id: "Udyr", key: "77"},
+            {name: "Urgot", role: "fighter", id: "Urgot", key: "6"},
+            {name: "Varus", role: "marksman", id: "Varus", key: "110"},
+            {name: "Vayne", role: "marksman", id: "Vayne", key: "67"},
+            {name: "Veigar", role: "mage", id: "Veigar", key: "45"},
+            {name: "Vel'Koz", role: "mage", id: "Velkoz", key: "161"},
+            {name: "Vex", role: "mage", id: "Vex", key: "711"},
+            {name: "Vi", role: "fighter", id: "Vi", key: "254"},
+            {name: "Viego", role: "assassin", id: "Viego", key: "234"},
+            {name: "Viktor", role: "mage", id: "Viktor", key: "112"},
+            {name: "Vladimir", role: "mage", id: "Vladimir", key: "8"},
+            {name: "Volibear", role: "fighter", id: "Volibear", key: "106"},
+            {name: "Warwick", role: "fighter", id: "Warwick", key: "19"},
+            {name: "Wukong", role: "fighter", id: "MonkeyKing", key: "62"},
+            {name: "Xayah", role: "marksman", id: "Xayah", key: "498"},
+            {name: "Xerath", role: "mage", id: "Xerath", key: "101"},
+            {name: "Xin Zhao", role: "fighter", id: "XinZhao", key: "5"},
+            {name: "Yasuo", role: "fighter", id: "Yasuo", key: "157"},
+            {name: "Yone", role: "assassin", id: "Yone", key: "777"},
+            {name: "Yorick", role: "fighter", id: "Yorick", key: "83"},
+            {name: "Yuumi", role: "support", id: "Yuumi", key: "350"},
+            {name: "Zac", role: "tank", id: "Zac", key: "154"},
+            {name: "Zed", role: "assassin", id: "Zed", key: "238"},
+            {name: "Zeri", role: "marksman", id: "Zeri", key: "221"},
+            {name: "Ziggs", role: "mage", id: "Ziggs", key: "115"},
+            {name: "Zilean", role: "support", id: "Zilean", key: "26"},
+            {name: "Zoe", role: "mage", id: "Zoe", key: "142"},
+            {name: "Zyra", role: "support", id: "Zyra", key: "143"}
+        ];
+
+        let completedChampions = JSON.parse(localStorage.getItem('completedChampions') || '[]');
+        let masteryData = JSON.parse(localStorage.getItem('masteryData') || '{}');
+        let currentFilter = 'all';
+        let currentSort = 'alphabetical';
+
+        // Echte Riot API Integration
+        async function fetchRiotData() {
+            const riotId = document.getElementById('riot-id').value.trim();
+            const region = document.getElementById('region').value;
+            
+            if (!riotId) {
+                showError('Bitte gib deine Riot ID ein!');
+                return;
+            }
+
+            const [gameName, tagLine] = riotId.split('#');
+            if (!tagLine) {
+                showError('Riot ID muss Format "Name#TAG" haben');
+                return;
+            }
+
+            showLoading(true);
+            hideError();
+
+            try {
+                // Backend API Call
+                const response = await fetch(`http://localhost:3000/api/player/${encodeURIComponent(gameName)}/${encodeURIComponent(tagLine)}/${region}`);
+                
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.details || error.error);
+                }
+                
+                const data = await response.json();
+                
+                // Mastery Daten verarbeiten
+                const newMasteryData = {};
+                data.masteries.forEach(mastery => {
+                    newMasteryData[mastery.championId] = {
+                        championLevel: mastery.championLevel,
+                        championPoints: mastery.championPoints,
+                        lastPlayTime: mastery.lastPlayTime
+                    };
+                });
+                
+                masteryData = newMasteryData;
+                localStorage.setItem('masteryData', JSON.stringify(masteryData));
+                
+                // Player Info anzeigen
+                document.getElementById('player-name').textContent = `${data.account.gameName}#${data.account.tagLine}`;
+                document.getElementById('player-level').textContent = data.summoner.summonerLevel;
+                document.getElementById('player-info').style.display = 'block';
+                
+                renderChampions();
+                
+            } catch (error) {
+                showError(`Fehler: ${error.message}`);
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        // Demo Daten für Entwicklung
+        function loadDemoData() {
+            showLoading(true);
+            
+            setTimeout(() => {
+                // Fake Mastery Daten
+                const demoMastery = {
+                    "157": { // Yasuo
+                        championLevel: 7,
+                        championPoints: 234567,
+                        lastPlayTime: Date.now() - 86400000
+                    },
+                    "103": { // Ahri
+                        championLevel: 6,
+                        championPoints: 156789,
+                        lastPlayTime: Date.now() - 172800000
+                    },
+                    "84": { // Akali
+                        championLevel: 5,
+                        championPoints: 89234,
+                        lastPlayTime: Date.now() - 259200000
+                    },
+                    "238": { // Zed
+                        championLevel: 7,
+                        championPoints: 445678,
+                        lastPlayTime: Date.now() - 345600000
+                    },
+                    "99": { // Lux
+                        championLevel: 4,
+                        championPoints: 45678,
+                        lastPlayTime: Date.now() - 432000000
+                    },
+                    "81": { // Ezreal
+                        championLevel: 6,
+                        championPoints: 178456,
+                        lastPlayTime: Date.now() - 518400000
+                    },
+                    "222": { // Jinx
+                        championLevel: 5,
+                        championPoints: 134567,
+                        lastPlayTime: Date.now() - 604800000
+                    },
+                    "64": { // Lee Sin
+                        championLevel: 7,
+                        championPoints: 567890,
+                        lastPlayTime: Date.now() - 691200000
+                    }
+                };
+
+                masteryData = demoMastery;
+                localStorage.setItem('masteryData', JSON.stringify(masteryData));
+                
+                // Fake Player Info
+                document.getElementById('player-name').textContent = 'DemoPlayer#EUW';
+                document.getElementById('player-level').textContent = '156';
+                document.getElementById('player-info').style.display = 'block';
+                
+                showLoading(false);
+                renderChampions();
+            }, 1500);
+        }
+
+        function processMasteryData(masteries, summoner) {
+            masteryData = {};
+            
+            masteries.forEach(mastery => {
+                masteryData[mastery.championId] = {
+                    championLevel: mastery.championLevel,
+                    championPoints: mastery.championPoints,
+                    lastPlayTime: mastery.lastPlayTime
+                };
+            });
+            
+            localStorage.setItem('masteryData', JSON.stringify(masteryData));
+            
+            document.getElementById('player-name').textContent = summoner.name;
+            document.getElementById('player-level').textContent = summoner.summonerLevel;
+            document.getElementById('player-info').style.display = 'block';
+            
+            renderChampions();
+        }
+
+        function createChampionCard(champion) {
+            const isCompleted = completedChampions.includes(champion.name);
+            const mastery = masteryData[champion.key];
+            const imageUrl = `https://ddragon.leagueoflegends.com/cdn/14.24.1/img/champion/${champion.id}.png`;
+            const fallbackText = champion.name.substring(0, 3).toUpperCase();
+            
+            let masteryBadge = '';
+            let masteryInfo = '';
+            let cardClass = '';
+            
+            if (mastery) {
+                const level = mastery.championLevel;
+                const points = mastery.championPoints.toLocaleString();
+                const lastPlayed = new Date(mastery.lastPlayTime).toLocaleDateString();
+                
+                masteryBadge = `<div class="mastery-badge level-${level}">${level}</div>`;
+                masteryInfo = `
+                    <div class="mastery-info">
+                        Level ${level}<br>
+                        <span class="mastery-points">${points} Punkte</span><br>
+                        Zuletzt: ${lastPlayed}
+                    </div>
+                `;
+                
+                if (level >= 5) {
+                    cardClass = 'high-mastery';
+                }
+            }
+            
+            return `
+                <div class="champion-card ${isCompleted ? 'completed' : ''} ${cardClass}" 
+                     data-champion="${champion.name}" 
+                     data-role="${champion.role}"
+                     data-mastery="${mastery ? mastery.championLevel : 0}">
+                    <div class="champion-image">
+                        <img src="${imageUrl}" alt="${champion.name}" loading="lazy" 
+                             onerror="this.style.display='none'; this.parentNode.innerHTML='${fallbackText}';">
+                        ${masteryBadge}
+                    </div>
+                    <div class="champion-name">${champion.name}</div>
+                    <div class="champion-role">${getRoleDisplayName(champion.role)}</div>
+                    ${masteryInfo}
+                    <label class="win-checkbox">
+                        <input type="checkbox" ${isCompleted ? 'checked' : ''} onchange="toggleChampion('${champion.name.replace(/'/g, "\\'")}')">
+                        <span class="checkmark"></span>
+                    </label>
+                </div>
+            `;
+        }
+
+        function getRoleDisplayName(role) {
+            const roleNames = {
+                'assassin': 'Assassine',
+                'fighter': 'Kämpfer',
+                'mage': 'Magier',
+                'marksman': 'Schütze',
+                'support': 'Unterstützer',
+                'tank': 'Tank'
+            };
+            return roleNames[role] || role;
+        }
+
+        function renderChampions() {
+            const grid = document.getElementById('champions-grid');
+            const searchTerm = document.getElementById('search-input').value.toLowerCase();
+            
+            let filteredChampions = champions.filter(champion => {
+                const mastery = masteryData[champion.key];
+                const matchesSearch = champion.name.toLowerCase().includes(searchTerm);
+                const matchesFilter = currentFilter === 'all' || 
+                                    (currentFilter === 'completed' && completedChampions.includes(champion.name)) ||
+                                    (currentFilter === 'pending' && !completedChampions.includes(champion.name)) ||
+                                    (currentFilter === 'high-mastery' && mastery && mastery.championLevel >= 5) ||
+                                    champion.role === currentFilter;
+                
+                return matchesSearch && matchesFilter;
+            });
+
+            // Sortierung anwenden
+            filteredChampions.sort((a, b) => {
+                const masteryA = masteryData[a.key];
+                const masteryB = masteryData[b.key];
+                
+                switch (currentSort) {
+                    case 'mastery-points':
+                        // Mastery Punkte (höchste zuerst)
+                        const pointsA = masteryA?.championPoints || 0;
+                        const pointsB = masteryB?.championPoints || 0;
+                        if (pointsA !== pointsB) {
+                            return pointsB - pointsA;
+                        }
+                        // Bei gleichen Punkten: alphabetisch
+                        return a.name.localeCompare(b.name);
+                        
+                    case 'mastery-level':
+                        // Mastery Level (höchstes zuerst)
+                        const levelA = masteryA?.championLevel || 0;
+                        const levelB = masteryB?.championLevel || 0;
+                        if (levelA !== levelB) {
+                            return levelB - levelA;
+                        }
+                        // Bei gleichem Level: nach Punkten
+                        const ptsA = masteryA?.championPoints || 0;
+                        const ptsB = masteryB?.championPoints || 0;
+                        if (ptsA !== ptsB) {
+                            return ptsB - ptsA;
+                        }
+                        // Sonst alphabetisch
+                        return a.name.localeCompare(b.name);
+                        
+                    case 'last-played':
+                        // Zuletzt gespielt (neueste zuerst)
+                        const timeA = masteryA?.lastPlayTime || 0;
+                        const timeB = masteryB?.lastPlayTime || 0;
+                        if (timeA !== timeB) {
+                            return timeB - timeA;
+                        }
+                        // Bei gleicher Zeit: alphabetisch
+                        return a.name.localeCompare(b.name);
+                        
+                    case 'alphabetical':
+                    default:
+                        // Alphabetisch (Standard)
+                        return a.name.localeCompare(b.name);
+                }
+            });
+
+            grid.innerHTML = filteredChampions.map(createChampionCard).join('');
+            updateStats();
+        }
+
+        function toggleChampion(championName) {
+            // Dekodiere escaped Apostrophe
+            championName = championName.replace(/\\'/g, "'");
+            
+            const index = completedChampions.indexOf(championName);
+            if (index > -1) {
+                completedChampions.splice(index, 1);
+            } else {
+                completedChampions.push(championName);
+            }
+            
+            localStorage.setItem('completedChampions', JSON.stringify(completedChampions));
+            renderChampions();
+        }
+
+        function updateStats() {
+            const total = champions.length;
+            const completed = completedChampions.length;
+            const withMastery = Object.keys(masteryData).length;
+            const percentage = Math.round((completed / total) * 100);
+            
+            document.getElementById('completed-count').textContent = completed;
+            document.getElementById('total-count').textContent = total;
+            document.getElementById('mastery-count').textContent = withMastery;
+            document.getElementById('completion-percentage').textContent = percentage + '%';
+            document.getElementById('progress-fill').style.width = percentage + '%';
+        }
+
+        function resetProgress() {
+            if (confirm('Willst du wirklich den Arena Fortschritt zurücksetzen?')) {
+                completedChampions = [];
+                localStorage.removeItem('completedChampions');
+                renderChampions();
+            }
+        }
+
+        function resetMastery() {
+            if (confirm('Willst du wirklich alle Mastery Daten löschen?')) {
+                masteryData = {};
+                localStorage.removeItem('masteryData');
+                document.getElementById('player-info').style.display = 'none';
+                document.getElementById('riot-id').value = '';
+                renderChampions();
+            }
+        }
+
+        function showLoading(show) {
+            document.getElementById('loading').style.display = show ? 'block' : 'none';
+            document.getElementById('fetch-btn').disabled = show;
+            document.getElementById('fetch-btn').textContent = show ? 'Lädt...' : 'Mastery laden';
+        }
+
+        function showError(message) {
+            const errorEl = document.getElementById('error');
+            errorEl.textContent = message;
+            errorEl.style.display = 'block';
+        }
+
+        function hideError() {
+            document.getElementById('error').style.display = 'none';
+        }
+
+        // Event Listeners
+        document.getElementById('search-input').addEventListener('input', renderChampions);
+
+        // Sort-Dropdown Event Listener
+        document.getElementById('sort-select').addEventListener('change', function() {
+            currentSort = this.value;
+            renderChampions();
+        });
+
+        document.querySelectorAll('.filter-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+                currentFilter = this.dataset.filter;
+                renderChampions();
+            });
+        });
+
+        // Enter Key Support für Riot ID Input
+        document.getElementById('riot-id').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                fetchRiotData();
+            }
+        });
+
+        // Initial render
+        renderChampions();
+
+        // Backend API Code Beispiel (Node.js/Express)
+        /*
+        
+        // server.js - Backend für echte Riot API Integration
+        const express = require('express');
+        const axios = require('axios');
+        const app = express();
+
+        const RIOT_API_KEY = 'RGAPI-your-api-key-here'; // Nie im Frontend!
+        
+        // Proxy für Account API (EUROPE region)
+        app.get('/api/riot/account/v1/accounts/by-riot-id/:gameName/:tagLine', async (req, res) => {
+            try {
+                const { gameName, tagLine } = req.params;
+                const response = await axios.get(
+                    `https://europe.api.riotgames.com/riot/account/v1/accounts/by-riot-id/${gameName}/${tagLine}`,
+                    { headers: { 'X-Riot-Token': RIOT_API_KEY } }
+                );
+                res.json(response.data);
+            } catch (error) {
+                res.status(error.response?.status || 500).json({ error: error.message });
+            }
+        });
+
+        // Proxy für Summoner API
+        app.get('/api/riot/summoner/v4/summoners/by-puuid/:puuid', async (req, res) => {
+            try {
+                const { puuid } = req.params;
+                const { region } = req.query;
+                const response = await axios.get(
+                    `https://${region}.api.riotgames.com/lol/summoner/v4/summoners/by-puuid/${puuid}`,
+                    { headers: { 'X-Riot-Token': RIOT_API_KEY } }
+                );
+                res.json(response.data);
+            } catch (error) {
+                res.status(error.response?.status || 500).json({ error: error.message });
+            }
+        });
+
+        // Proxy für Champion Mastery API
+        app.get('/api/riot/champion-mastery/v4/champion-masteries/by-summoner/:summonerId', async (req, res) => {
+            try {
+                const { summonerId } = req.params;
+                const { region } = req.query;
+                const response = await axios.get(
+                    `https://${region}.api.riotgames.com/lol/champion-mastery/v4/champion-masteries/by-summoner/${summonerId}`,
+                    { headers: { 'X-Riot-Token': RIOT_API_KEY } }
+                );
+                res.json(response.data);
+            } catch (error) {
+                res.status(error.response?.status || 500).json({ error: error.message });
+            }
+        });
+
+        app.listen(3000, () => {
+            console.log('Riot API Proxy running on port 3000');
+        });
+        
+        */
+    </script>
+</body>
+</html>
