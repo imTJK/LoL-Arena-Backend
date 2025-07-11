@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LoL Arena Win Tracker</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="language-toggle">
+        <button class="lang-btn active" data-lang="en">EN</button>
+        <button class="lang-btn" data-lang="de">DE</button>
+    </div>
+
+    <div class="container">
+        <div class="header">
+            <h1 data-translate="title">LoL Arena Win Tracker</h1>
+            
+            <div class="riot-login">
+                <h3 data-translate="connect_account">Connect Riot Account</h3>
+                <div class="login-form">
+                    <input type="text" class="riot-input" id="riot-id" 
+                           placeholder="Riot ID (e.g. Playername#TAG)" 
+                           data-translate-placeholder="riot_id_placeholder">
+                    <select class="region-select" id="region">
+                        <option value="euw1">EUW</option>
+                        <option value="eun1">EUNE</option>
+                        <option value="na1">NA</option>
+                        <option value="kr">Korea</option>
+                        <option value="jp1">Japan</option>
+                    </select>
+                    <button class="fetch-btn" id="fetch-btn" onclick="fetchRiotData()" 
+                            data-translate="load_mastery">Load Mastery</button>
+                </div>
+                
+                <div class="player-info" id="player-info">
+                    <strong id="player-name"></strong> - Level <span id="player-level"></span>
+                    <br><span data-translate="mastery_loaded">Mastery data loaded!</span>
+                </div>
+            </div>
+
+            <div class="stats">
+                <div class="stat-item">
+                    <div class="stat-number" id="completed-count">0</div>
+                    <div data-translate="arena_wins">Arena Wins</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-number" id="total-count">0</div>
+                    <div data-translate="champions">Champions</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-number" id="mastery-count">0</div>
+                    <div data-translate="with_mastery">With Mastery</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-number" id="completion-percentage">0%</div>
+                    <div data-translate="progress">Progress</div>
+                </div>
+            </div>
+            
+            <div class="arena-god-challenge">
+                <div class="challenge-header">
+                    <span class="challenge-title" data-translate="arena_god_challenge">Arena God Challenge</span>
+                    <span class="challenge-counter" id="arena-god-counter">0/60</span>
+                </div>
+                <div class="arena-god-bar">
+                    <div class="arena-god-fill" id="arena-god-fill"></div>
+                    <div class="arena-god-milestones">
+                        <div class="milestone" data-count="10" style="left: 16.67%;">
+                            <div class="milestone-marker"></div>
+                            <div class="milestone-tooltip" data-translate="bronze_milestone">10 Wins - Bronze Arena God</div>
+                        </div>
+                        <div class="milestone" data-count="25" style="left: 41.67%;">
+                            <div class="milestone-marker"></div>
+                            <div class="milestone-tooltip" data-translate="silver_milestone">25 Wins - Silver Arena God</div>
+                        </div>
+                        <div class="milestone" data-count="45" style="left: 75%;">
+                            <div class="milestone-marker"></div>
+                            <div class="milestone-tooltip" data-translate="gold_milestone">45 Wins - Gold Arena God</div>
+                        </div>
+                        <div class="milestone" data-count="60" style="left: 100%;">
+                            <div class="milestone-marker final"></div>
+                            <div class="milestone-tooltip" data-translate="ultimate_milestone">60 Wins - ULTIMATE ARENA GOD!</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <input type="text" class="search-bar" id="search-input" 
+               placeholder="Search champion..." 
+               data-translate-placeholder="search_placeholder">
+
+        <div class="filters">
+            <button class="filter-btn active" data-filter="all" data-translate="all">All</button>
+            <button class="filter-btn" data-filter="completed" data-translate="arena_wins_filter">Arena Wins</button>
+            <button class="filter-btn" data-filter="pending" data-translate="pending">Pending</button>
+            <button class="filter-btn" data-filter="high-mastery" data-translate="high_mastery">High Mastery (50k+)</button>
+            <button class="filter-btn" data-filter="assassin">
+                <img src="https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-clash/global/default/assets/images/position-selector/positions/icon-position-assassin.png" class="role-icon">
+                <span data-translate="assassin">Assassin</span>
+            </button>
+            <button class="filter-btn" data-filter="fighter">
+                <img src="https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-clash/global/default/assets/images/position-selector/positions/icon-position-fighter.png" class="role-icon">
+                <span data-translate="fighter">Fighter</span>
+            </button>
+            <button class="filter-btn" data-filter="mage">
+                <img src="https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-clash/global/default/assets/images/position-selector/positions/icon-position-mage.png" class="role-icon">
+                <span data-translate="mage">Mage</span>
+            </button>
+            <button class="filter-btn" data-filter="marksman">
+                <img src="https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-clash/global/default/assets/images/position-selector/positions/icon-position-marksman.png" class="role-icon">
+                <span data-translate="marksman">Marksman</span>
+            </button>
+            <button class="filter-btn" data-filter="support">
+                <img src="https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-clash/global/default/assets/images/position-selector/positions/icon-position-support.png" class="role-icon">
+                <span data-translate="support">Support</span>
+            </button>
+            <button class="filter-btn" data-filter="tank">
+                <img src="https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-clash/global/default/assets/images/position-selector/positions/icon-position-tank.png" class="role-icon">
+                <span data-translate="tank">Tank</span>
+            </button>
+        </div>
+
+        <div class="sort-controls">
+            <label for="sort-select" data-translate="sort_by">Sort by:</label>
+            <select id="sort-select" class="sort-select">
+                <option value="alphabetical" data-translate="alphabetical">Alphabetical</option>
+                <option value="mastery-points" data-translate="mastery_points">Mastery Points</option>
+                <option value="mastery-level" data-translate="mastery_level">Mastery Level</option>
+                <option value="last-played" data-translate="last_played">Last Played</option>
+            </select>
+        </div>
+
+        <div id="loading" class="loading" style="display: none;">
+            <span data-translate="loading">Loading mastery data...</span>
+        </div>
+
+        <div id="error" class="error" style="display: none;"></div>
+
+        <div class="champions-grid" id="champions-grid">
+            <!-- Champions will be loaded dynamically -->
+        </div>
+
+        <div style="text-align: center;">
+            <button class="reset-btn" onclick="resetProgress()" data-translate="reset_progress">Reset Arena Progress</button>
+            <button class="demo-btn" onclick="loadDemoData()" data-translate="load_demo">Load Demo Data</button>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
