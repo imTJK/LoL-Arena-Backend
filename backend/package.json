@@ -8,7 +8,13 @@
     "dev": "nodemon server.js",
     "test": "node -e \"console.log('✅ Backend funktioniert!'); process.exit(0)\""
   },
-  "keywords": ["league of legends", "riot api", "mastery", "arena", "lol"],
+  "keywords": [
+    "league of legends",
+    "riot api",
+    "mastery",
+    "arena",
+    "lol"
+  ],
   "author": "Your Name",
   "license": "MIT",
   "engines": {
@@ -21,10 +27,9 @@
     "express": "^4.19.2",
     "express-rate-limit": "^7.5.1",
     "helmet": "^8.1.0",
-    "pg": "^8.11.3",
+    "jsonwebtoken": "^9",
     "node-cron": "^3.0.3",
-    "pg-native": "^3.5.2",
-    "jsonwebtoken": "^9"
+    "pg": "^8.11.3"
   },
   "devDependencies": {
     "nodemon": "^3.1.10"
