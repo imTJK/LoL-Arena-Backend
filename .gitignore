@@ -1,5 +1,4 @@
 # .gitignore Datei erstellen
-testing
 echo "node_modules/" > .gitignore
 echo ".env" >> .gitignore
 echo "*.log" >> .gitignore
