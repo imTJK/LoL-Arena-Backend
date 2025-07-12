@@ -174,26 +174,12 @@ body {
     cursor: pointer;
     transition: all 0.3s ease;
     font-size: 14px;
-    display: flex;
-    align-items: center;
-    gap: 8px;
 }
 
 .filter-btn:hover, .filter-btn.active {
     background: #c89b3c;
     color: #0f1419;
     transform: translateY(-2px);
-}
-
-.role-icon {
-    width: 20px;
-    height: 20px;
-    filter: brightness(0.9);
-}
-
-.filter-btn.active .role-icon,
-.filter-btn:hover .role-icon {
-    filter: brightness(0.1);
 }
 
 /* Sort Controls */
@@ -378,15 +364,7 @@ body {
     font-size: 0.9em;
     color: #c89b3c;
     margin-bottom: 8px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 5px;
-}
-
-.role-icon-small {
-    width: 16px;
-    height: 16px;
+    text-transform: capitalize;
 }
 
 .mastery-info {

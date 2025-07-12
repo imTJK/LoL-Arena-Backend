@@ -47,7 +47,84 @@ class ArenaTracker {
             this.applyTranslations();
         } catch (error) {
             console.error('Failed to load translations:', error);
+            // Fallback translations
+            this.translations = this.getDefaultTranslations();
+            this.applyTranslations();
         }
+    }
+
+    getDefaultTranslations() {
+        const translations = {
+            en: {
+                title: "LoL Arena Win Tracker",
+                connect_account: "Connect Riot Account",
+                riot_id_placeholder: "Summoner Name#TAG",
+                load_mastery: "Load Mastery",
+                mastery_loaded: "Mastery data loaded!",
+                arena_wins: "Arena Wins",
+                champions: "Champions",
+                progress: "Progress",
+                all: "All",
+                arena_wins_filter: "Arena Wins",
+                pending: "Pending",
+                high_mastery: "High Mastery (50k+)",
+                assassin: "Assassin",
+                fighter: "Fighter",
+                mage: "Mage",
+                marksman: "Marksman",
+                support: "Support",
+                tank: "Tank",
+                sort_by: "Sort by:",
+                alphabetical: "Alphabetical",
+                mastery_points: "Mastery Points",
+                mastery_level: "Mastery Level",
+                last_played: "Last Played",
+                loading: "Loading mastery data...",
+                reset_progress: "Reset Arena Progress",
+                load_demo: "Load Demo Data",
+                level: "Level",
+                points: "Points",
+                last: "Last",
+                reset_confirm: "Do you really want to reset your Arena progress?",
+                error: "Error",
+                riot_id_format: "Riot ID must have format 'Name#TAG'"
+            },
+            de: {
+                title: "LoL Arena Win Tracker",
+                connect_account: "Riot Account verbinden",
+                riot_id_placeholder: "Beschwörername#TAG",
+                load_mastery: "Mastery laden",
+                mastery_loaded: "Mastery Daten geladen!",
+                arena_wins: "Arena Siege",
+                champions: "Champions",
+                progress: "Fortschritt",
+                all: "Alle",
+                arena_wins_filter: "Arena Siege",
+                pending: "Offen",
+                high_mastery: "Hohe Mastery (50k+)",
+                assassin: "Assassine",
+                fighter: "Kämpfer",
+                mage: "Magier",
+                marksman: "Schütze",
+                support: "Unterstützer",
+                tank: "Tank",
+                sort_by: "Sortierung:",
+                alphabetical: "Alphabetisch",
+                mastery_points: "Mastery Punkte",
+                mastery_level: "Mastery Level",
+                last_played: "Zuletzt gespielt",
+                loading: "Lade Mastery Daten...",
+                reset_progress: "Arena Fortschritt zurücksetzen",
+                load_demo: "Demo Daten laden",
+                level: "Level",
+                points: "Punkte",
+                last: "Zuletzt",
+                reset_confirm: "Willst du wirklich den Arena Fortschritt zurücksetzen?",
+                error: "Fehler",
+                riot_id_format: "Riot ID muss Format 'Name#TAG' haben"
+            }
+        };
+        return translations[this.currentLang] || translations.en;
     }
 
     async loadChampions() {
@@ -65,7 +142,10 @@ class ArenaTracker {
             const response = await fetch(`${this.apiUrl}/api/wins/${this.userIdentifier}`);
             const data = await response.json();
             this.wins = new Set(data.wins);
-            this.updateStats();
+            const stats = document.getElementById('mastery-count').parentElement;
+        stats.style.display = 'none';  // Hide mastery count stat
+        
+        this.updateStats();
         } catch (error) {
             console.error('Failed to load wins:', error);
         }
@@ -198,18 +278,22 @@ class ArenaTracker {
             `;
         }
         
+        // Capitalize first letter of role for display
+        const roleDisplay = champion.role ? champion.role.charAt(0).toUpperCase() + champion.role.slice(1) : '';
+        
         return `
             <div class="champion-card ${isCompleted ? 'completed' : ''} ${hasHighMastery ? 'high-mastery' : ''}" 
                  data-champion="${champion.key}">
                 <div class="champion-image">
-                    <img src="${champion.image_url}" alt="${champion.name}" loading="lazy">
+                    <img src="${champion.image_url || `https://ddragon.leagueoflegends.com/cdn/14.24.1/img/champion/${champion.id || champion.name}.png`}" 
+                         alt="${champion.name}" 
+                         loading="lazy"
+                         onerror="this.style.display='none'; this.parentNode.innerHTML='${champion.name.substring(0, 3).toUpperCase()}';">
                     ${masteryBadge}
                 </div>
                 <div class="champion-name">${champion.name}</div>
                 <div class="champion-role">
-                    <img src="https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-clash/global/default/assets/images/position-selector/positions/icon-position-${champion.role}.png" 
-                         alt="${champion.role}" class="role-icon-small">
-                    <span>${this.translate(champion.role)}</span>
+                    ${this.translate(champion.role) || roleDisplay}
                 </div>
                 ${masteryInfo}
                 <label class="win-checkbox">
@@ -224,12 +308,10 @@ class ArenaTracker {
     updateStats() {
         const completed = this.wins.size;
         const total = this.champions.length;
-        const withMastery = Object.keys(this.masteryData).length;
         const percentage = Math.round((completed / total) * 100);
         
         document.getElementById('completed-count').textContent = completed;
         document.getElementById('total-count').textContent = total;
-        document.getElementById('mastery-count').textContent = withMastery;
         document.getElementById('completion-percentage').textContent = percentage + '%';
         
         // Update Arena God Challenge
