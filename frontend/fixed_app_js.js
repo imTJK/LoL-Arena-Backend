@@ -5,6 +5,7 @@ class ArenaTracker {
             ? 'http://localhost:3000' 
             : 'https://lol-arena-backend-production.up.railway.app';
         
+            
         this.champions = [];
         this.masteryData = {};
         this.wins = new Set();
