@@ -182,13 +182,15 @@ async function initDatabase() {
     `);
 
     // Add API cache table for persistent caching
+    // Add summoner profiles table
     await pool.query(`
-      CREATE TABLE IF NOT EXISTS api_cache (
+      CREATE TABLE IF NOT EXISTS summoner_profiles (
         id SERIAL PRIMARY KEY,
-        cache_key VARCHAR(255) UNIQUE NOT NULL,
-        data JSONB NOT NULL,
+        summoner_code VARCHAR(20) UNIQUE NOT NULL,
+        profile_data JSONB NOT NULL,
+        mastery_data JSONB NOT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        expires_at TIMESTAMP NOT NULL
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
 
@@ -343,6 +345,51 @@ app.get('/api/player/:gameName/:tagLine/:region', async (req, res) => {
   }
 });
 
+// Save summoner profile
+app.post('/api/summoner-profile', async (req, res) => {
+  try {
+    const { summonerCode, profileData, masteryData } = req.body;
+    
+    await pool.query(
+      `INSERT INTO summoner_profiles (summoner_code, profile_data, mastery_data, updated_at) 
+       VALUES ($1, $2, $3, NOW()) 
+       ON CONFLICT (summoner_code) 
+       DO UPDATE SET profile_data = $2, mastery_data = $3, updated_at = NOW()`,
+      [summonerCode, JSON.stringify(profileData), JSON.stringify(masteryData)]
+    );
+    
+    res.json({ success: true, code: summonerCode });
+  } catch (error) {
+    console.error('Error saving summoner profile:', error);
+    res.status(500).json({ error: 'Failed to save summoner profile' });
+  }
+});
+
+// Get summoner profile
+app.get('/api/summoner-profile/:code', async (req, res) => {
+  try {
+    const { code } = req.params;
+    
+    const result = await pool.query(
+      'SELECT profile_data, mastery_data, updated_at FROM summoner_profiles WHERE summoner_code = $1',
+      [code]
+    );
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Summoner profile not found' });
+    }
+    
+    res.json({
+      profileData: result.rows[0].profile_data,
+      masteryData: result.rows[0].mastery_data,
+      lastSync: result.rows[0].updated_at
+    });
+  } catch (error) {
+    console.error('Error fetching summoner profile:', error);
+    res.status(500).json({ error: 'Failed to fetch summoner profile' });
+  }
+});
+
 // Clean up old cache entries
 cron.schedule('0 */6 * * *', async () => {
   try {
@@ -483,7 +530,8 @@ async function initTranslations() {
       reset_progress: "Reset Arena Progress", load_demo: "Load Demo Data",
       level: "Level", points: "Points", reset_confirm: "Do you really want to reset your Arena progress?",
       error: "Error", riot_id_format: "Riot ID must have format 'Name#TAG'",
-      search_placeholder: "Search champion...", arena_god_challenge: "Arena God Challenge"
+      mastery_info: "Mastery Information", base_stats: "Base Stats",
+      lore: "Lore", passive: "Passive Ability"
     },
     de: {
       title: "LoL Arena Win Tracker", connect_account: "Riot Account verbinden",
@@ -499,7 +547,8 @@ async function initTranslations() {
       reset_progress: "Arena Fortschritt zurücksetzen", load_demo: "Demo Daten laden",
       level: "Level", points: "Punkte", reset_confirm: "Willst du wirklich den Arena Fortschritt zurücksetzen?",
       error: "Fehler", riot_id_format: "Riot ID muss Format 'Name#TAG' haben",
-      search_placeholder: "Champion suchen...", arena_god_challenge: "Arena Gott Herausforderung"
+      mastery_info: "Mastery Informationen", base_stats: "Grundwerte",
+      lore: "Geschichte", passive: "Passive Fähigkeit"
     }
   };
 
@@ -542,7 +591,7 @@ function mapRole(tag) {
   return roleMap[tag] || 'fighter';
 }
 
-// Champion update function (simplified)
+// Champion update function (enhanced for modal data)
 async function updateChampionsData() {
   try {
     console.log('🔄 Updating champions data...');
@@ -556,14 +605,44 @@ async function updateChampionsData() {
     const champions = Object.values(championsResponse.data.data);
     
     for (const champ of champions) {
-      await pool.query(`
-        INSERT INTO champions (key, name, role, image_url) 
-        VALUES ($1, $2, $3, $4) 
-        ON CONFLICT (key) DO UPDATE SET name = $2, role = $3, image_url = $4
-      `, [
-        champ.key, champ.name, mapRole(champ.tags[0]),
-        `https://ddragon.leagueoflegends.com/cdn/${latestVersion}/img/champion/${champ.id}.png`
-      ]);
+      try {
+        // Get detailed champion data
+        const detailResponse = await axios.get(
+          `https://ddragon.leagueoflegends.com/cdn/${latestVersion}/data/en_US/champion/${champ.id}.json`
+        );
+        
+        const detailed = detailResponse.data.data[champ.id];
+        
+        await pool.query(`
+          INSERT INTO champions (key, name, title, role, tags, difficulty, image_url, splash_art_url, lore, passive_name, passive_description, stats, spells) 
+          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) 
+          ON CONFLICT (key) DO UPDATE SET 
+            name = $2, title = $3, role = $4, tags = $5, difficulty = $6,
+            image_url = $7, splash_art_url = $8, lore = $9,
+            passive_name = $10, passive_description = $11,
+            stats = $12, spells = $13, updated_at = CURRENT_TIMESTAMP
+        `, [
+          champ.key,
+          champ.name,
+          detailed.title,
+          mapRole(detailed.tags[0]),
+          detailed.tags,
+          detailed.info.difficulty,
+          `https://ddragon.leagueoflegends.com/cdn/${latestVersion}/img/champion/${champ.id}.png`,
+          `https://ddragon.leagueoflegends.com/cdn/img/champion/splash/${champ.id}_0.jpg`,
+          detailed.lore,
+          detailed.passive.name,
+          detailed.passive.description,
+          JSON.stringify(detailed.stats),
+          JSON.stringify(detailed.spells)
+        ]);
+        
+        // Small delay to avoid overwhelming the API
+        await sleep(100);
+        
+      } catch (error) {
+        console.error(`Error updating champion ${champ.name}:`, error.message);
+      }
     }
     
     console.log('✅ Champions updated');

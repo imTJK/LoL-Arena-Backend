@@ -13,6 +13,7 @@ class ArenaTracker {
         this.currentFilter = 'all';
         this.currentSort = 'alphabetical';
         this.userIdentifier = localStorage.getItem('userIdentifier') || this.generateUserId();
+        this.summonerProfile = null;
         
         this.init();
     }
@@ -24,6 +25,9 @@ class ArenaTracker {
         // Load champions from backend
         await this.loadChampions();
         
+        // Load saved summoner data
+        await this.loadSavedSummonerData();
+        
         // Load user wins
         await this.loadUserWins();
         
@@ -34,10 +38,311 @@ class ArenaTracker {
         this.render();
     }
 
+    // New: Clear summoner data
+    clearSummonerData() {
+        if (confirm(this.translate('clear_confirm') || 'Clear all summoner data?')) {
+            localStorage.removeItem('summonerProfile');
+            localStorage.removeItem('masteryData');
+            this.summonerProfile = null;
+            this.masteryData = {};
+            
+            document.getElementById('player-info').style.display = 'none';
+            document.getElementById('riot-id').value = '';
+            
+            this.render();
+            console.log('🗑️ Summoner data cleared');
+        }
+    }
+
+    showChampionDetails(championKey) {
+        const champion = this.champions.find(c => c.key === championKey);
+        if (!champion) return;
+
+        const mastery = this.masteryData[championKey];
+        const isCompleted = this.wins.has(championKey);
+
+        // Create modal HTML
+        const modalHtml = `
+            <div class="champion-modal-overlay" onclick="tracker.closeChampionModal()">
+                <div class="champion-modal" onclick="event.stopPropagation();">
+                    <button class="modal-close" onclick="tracker.closeChampionModal()">×</button>
+                    
+                    <div class="modal-header">
+                        <div class="modal-champion-image">
+                            <img src="${champion.splash_art_url || champion.image_url || `https://ddragon.leagueoflegends.com/cdn/img/champion/splash/${champion.name}_0.jpg`}" 
+                                 alt="${champion.name}"
+                                 onerror="this.src='${champion.image_url || `https://ddragon.leagueoflegends.com/cdn/14.24.1/img/champion/${champion.name}.png`}'">
+                        </div>
+                        <div class="modal-champion-info">
+                            <h2>${champion.name}</h2>
+                            <h3>${champion.title || 'The Champion'}</h3>
+                            <div class="modal-role">${this.translate(champion.role) || champion.role}</div>
+                            ${isCompleted ? '<div class="modal-won-badge">✅ Arena Won!</div>' : '<div class="modal-pending-badge">⏳ Pending</div>'}
+                        </div>
+                    </div>
+
+                    <div class="modal-content">
+                        ${mastery ? `
+                            <div class="modal-section">
+                                <h4>${this.translate('mastery_info') || 'Mastery Information'}</h4>
+                                <div class="mastery-details">
+                                    <div class="mastery-stat">
+                                        <span class="label">${this.translate('level')}:</span>
+                                        <span class="value level-${mastery.championLevel}">${mastery.championLevel}</span>
+                                    </div>
+                                    <div class="mastery-stat">
+                                        <span class="label">${this.translate('points')}:</span>
+                                        <span class="value">${mastery.championPoints.toLocaleString()}</span>
+                                    </div>
+                                    <div class="mastery-stat">
+                                        <span class="label">${this.translate('last_played') || 'Last Played'}:</span>
+                                        <span class="value">${new Date(mastery.lastPlayTime).toLocaleDateString()}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        ` : ''}
+
+                        ${champion.stats ? `
+                            <div class="modal-section">
+                                <h4>${this.translate('base_stats') || 'Base Stats'}</h4>
+                                <div class="stats-grid">
+                                    <div class="stat-item">
+                                        <span class="stat-label">HP</span>
+                                        <span class="stat-value">${Math.round(champion.stats.hp || 0)}</span>
+                                    </div>
+                                    <div class="stat-item">
+                                        <span class="stat-label">MP</span>
+                                        <span class="stat-value">${Math.round(champion.stats.mp || 0)}</span>
+                                    </div>
+                                    <div class="stat-item">
+                                        <span class="stat-label">AD</span>
+                                        <span class="stat-value">${Math.round(champion.stats.attackdamage || 0)}</span>
+                                    </div>
+                                    <div class="stat-item">
+                                        <span class="stat-label">AS</span>
+                                        <span class="stat-value">${(champion.stats.attackspeed || 0).toFixed(2)}</span>
+                                    </div>
+                                    <div class="stat-item">
+                                        <span class="stat-label">Armor</span>
+                                        <span class="stat-value">${Math.round(champion.stats.armor || 0)}</span>
+                                    </div>
+                                    <div class="stat-item">
+                                        <span class="stat-label">MR</span>
+                                        <span class="stat-value">${Math.round(champion.stats.spellblock || 0)}</span>
+                                    </div>
+                                    <div class="stat-item">
+                                        <span class="stat-label">MS</span>
+                                        <span class="stat-value">${Math.round(champion.stats.movespeed || 0)}</span>
+                                    </div>
+                                    <div class="stat-item">
+                                        <span class="stat-label">Range</span>
+                                        <span class="stat-value">${Math.round(champion.stats.attackrange || 0)}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        ` : ''}
+
+                        ${champion.lore ? `
+                            <div class="modal-section">
+                                <h4>${this.translate('lore') || 'Lore'}</h4>
+                                <div class="lore-text">
+                                    ${champion.lore}
+                                </div>
+                            </div>
+                        ` : ''}
+
+                        ${champion.passive_name ? `
+                            <div class="modal-section">
+                                <h4>${this.translate('passive') || 'Passive Ability'}</h4>
+                                <div class="ability-info">
+                                    <strong>${champion.passive_name}</strong>
+                                    <p>${champion.passive_description || 'No description available'}</p>
+                                </div>
+                            </div>
+                        ` : ''}
+
+                        <div class="modal-actions">
+                            <button class="win-toggle-btn ${isCompleted ? 'completed' : ''}" 
+                                    onclick="tracker.toggleWinFromModal('${championKey}')">
+                                ${isCompleted ? '✅ Mark as Pending' : '🏆 Mark as Won'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        // Add modal to DOM
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+        document.body.style.overflow = 'hidden';
+    }
+
+    closeChampionModal() {
+        const modal = document.querySelector('.champion-modal-overlay');
+        if (modal) {
+            modal.remove();
+            document.body.style.overflow = '';
+        }
+    }
+
+    async toggleWinFromModal(championKey) {
+        await this.toggleWin(championKey);
+        this.closeChampionModal();
+        this.render();
+    }
+
     generateUserId() {
         const id = 'user_' + Math.random().toString(36).substr(2, 9);
         localStorage.setItem('userIdentifier', id);
         return id;
+    }
+
+    // New: Create persistent summoner code
+    createSummonerCode(gameName, tagLine, region) {
+        const rawCode = `${gameName}#${tagLine}@${region}`;
+        return btoa(rawCode).replace(/[+/=]/g, '').substring(0, 12).toUpperCase();
+    }
+
+    // New: Decode summoner code
+    decodeSummonerCode(code) {
+        try {
+            // Add padding if needed
+            let padded = code.toLowerCase();
+            while (padded.length % 4 !== 0) {
+                padded += '=';
+            }
+            const decoded = atob(padded);
+            const [riotId, region] = decoded.split('@');
+            const [gameName, tagLine] = riotId.split('#');
+            return { gameName, tagLine, region };
+        } catch (error) {
+            console.error('Invalid summoner code:', error);
+            return null;
+        }
+    }
+
+    // New: Save summoner data persistently
+    async saveSummonerData(accountData, summonerData, masteryData, region) {
+        const summonerCode = this.createSummonerCode(accountData.gameName, accountData.tagLine, region);
+        
+        const profileData = {
+            code: summonerCode,
+            account: accountData,
+            summoner: summonerData,
+            region: region,
+            lastUpdated: Date.now(),
+            masteryCount: masteryData.length,
+            totalMasteryPoints: masteryData.reduce((sum, m) => sum + m.championPoints, 0)
+        };
+
+        // Save to localStorage
+        localStorage.setItem('summonerProfile', JSON.stringify(profileData));
+        localStorage.setItem('masteryData', JSON.stringify(masteryData));
+        
+        // Save to backend for cross-device sync
+        try {
+            await fetch(`${this.apiUrl}/api/summoner-profile`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    summonerCode,
+                    profileData,
+                    masteryData
+                })
+            });
+            console.log('✅ Summoner data saved to cloud');
+        } catch (error) {
+            console.log('⚠️ Cloud save failed, using local storage only');
+        }
+
+        this.summonerProfile = profileData;
+        return summonerCode;
+    }
+
+    // New: Load saved summoner data
+    async loadSavedSummonerData() {
+        // Try loading from localStorage first
+        const savedProfile = localStorage.getItem('summonerProfile');
+        const savedMastery = localStorage.getItem('masteryData');
+
+        if (savedProfile && savedMastery) {
+            try {
+                this.summonerProfile = JSON.parse(savedProfile);
+                this.masteryData = {};
+                
+                const masteryArray = JSON.parse(savedMastery);
+                masteryArray.forEach(mastery => {
+                    this.masteryData[mastery.championId] = mastery;
+                });
+
+                // Show saved profile
+                this.displaySummonerProfile(this.summonerProfile);
+                
+                console.log(`✅ Loaded saved data for: ${this.summonerProfile.account.gameName}#${this.summonerProfile.account.tagLine}`);
+                
+                // Try to sync from cloud if available
+                this.syncFromCloud(this.summonerProfile.code);
+                
+            } catch (error) {
+                console.error('Error loading saved data:', error);
+            }
+        }
+    }
+
+    // New: Sync data from cloud
+    async syncFromCloud(summonerCode) {
+        try {
+            const response = await fetch(`${this.apiUrl}/api/summoner-profile/${summonerCode}`);
+            if (response.ok) {
+                const cloudData = await response.json();
+                
+                // Check if cloud data is newer
+                if (cloudData.profileData.lastUpdated > this.summonerProfile.lastUpdated) {
+                    console.log('☁️ Syncing newer data from cloud');
+                    
+                    this.summonerProfile = cloudData.profileData;
+                    this.masteryData = {};
+                    
+                    cloudData.masteryData.forEach(mastery => {
+                        this.masteryData[mastery.championId] = mastery;
+                    });
+                    
+                    // Update localStorage
+                    localStorage.setItem('summonerProfile', JSON.stringify(this.summonerProfile));
+                    localStorage.setItem('masteryData', JSON.stringify(cloudData.masteryData));
+                    
+                    this.displaySummonerProfile(this.summonerProfile);
+                    this.render();
+                }
+            }
+        } catch (error) {
+            console.log('Cloud sync not available');
+        }
+    }
+
+    // New: Display summoner profile
+    displaySummonerProfile(profile) {
+        document.getElementById('player-name').textContent = `${profile.account.gameName}#${profile.account.tagLine}`;
+        document.getElementById('player-level').textContent = profile.summoner.summonerLevel;
+        document.getElementById('summoner-code').textContent = profile.code;
+        document.getElementById('last-updated').textContent = new Date(profile.lastUpdated).toLocaleDateString();
+        document.getElementById('player-info').style.display = 'block';
+        
+        // Update input field for easy re-fetch
+        document.getElementById('riot-id').value = `${profile.account.gameName}#${profile.account.tagLine}`;
+        document.getElementById('region').value = profile.region;
+    }
+
+    // New: Get mastery tier class for styling
+    getMasteryTierClass(points) {
+        if (points >= 1000000) return 'points-1000000-plus';
+        if (points >= 500000) return 'points-500000-999999';
+        if (points >= 200000) return 'points-200000-499999';
+        if (points >= 100000) return 'points-100000-199999';
+        if (points >= 50000) return 'points-50000-99999';
+        if (points >= 25000) return 'points-25000-49999';
+        if (points >= 10000) return 'points-10000-24999';
+        return 'points-0-9999';
     }
 
     async loadTranslations() {
@@ -94,7 +399,15 @@ class ArenaTracker {
                 bronze_milestone: "10 Wins - Bronze Arena God",
                 silver_milestone: "25 Wins - Silver Arena God", 
                 gold_milestone: "45 Wins - Gold Arena God",
-                ultimate_milestone: "60 Wins - ULTIMATE ARENA GOD!"
+                ultimate_milestone: "60 Wins - ULTIMATE ARENA GOD!",
+                mastery_info: "Mastery Information",
+                base_stats: "Base Stats",
+                lore: "Lore",
+                passive: "Passive Ability",
+                summoner_code: "Code",
+                last_updated: "Updated",
+                refresh_data: "Refresh Data",
+                clear_data: "Clear Data"
             },
             de: {
                 title: "LoL Arena Win Tracker",
@@ -135,7 +448,15 @@ class ArenaTracker {
                 bronze_milestone: "10 Siege - Bronze Arena Gott",
                 silver_milestone: "25 Siege - Silber Arena Gott",
                 gold_milestone: "45 Siege - Gold Arena Gott", 
-                ultimate_milestone: "60 Siege - ULTIMATIVER ARENA GOTT!"
+                ultimate_milestone: "60 Siege - ULTIMATIVER ARENA GOTT!",
+                mastery_info: "Mastery Informationen",
+                base_stats: "Grundwerte",
+                lore: "Geschichte",
+                passive: "Passive Fähigkeit",
+                summoner_code: "Code",
+                last_updated: "Aktualisiert",
+                refresh_data: "Daten Aktualisieren",
+                clear_data: "Daten Löschen"
             }
         };
         return translations[this.currentLang] || translations.en;
@@ -222,6 +543,11 @@ class ArenaTracker {
             document.getElementById('player-level').textContent = data.summoner.summonerLevel;
             document.getElementById('player-info').style.display = 'block';
             
+            // Save summoner data persistently
+            const summonerCode = await this.saveSummonerData(data.account, data.summoner, data.masteries, region);
+            document.getElementById('summoner-code').textContent = summonerCode;
+            document.getElementById('last-updated').textContent = new Date().toLocaleDateString();
+            
             localStorage.setItem('masteryData', JSON.stringify(this.masteryData));
             
             this.render();
@@ -286,8 +612,9 @@ class ArenaTracker {
         if (mastery) {
             const level = mastery.championLevel;
             const points = mastery.championPoints.toLocaleString();
+            const tierClass = this.getMasteryTierClass(mastery.championPoints);
             
-            masteryBadge = `<div class="mastery-badge level-${level}">${level}</div>`;
+            masteryBadge = `<div class="mastery-badge level-${level} ${tierClass}">${points >= 1000000 ? '∞' : level}</div>`;
             masteryInfo = `
                 <div class="mastery-info">
                     ${this.translate('level')} ${level}<br>
@@ -301,7 +628,8 @@ class ArenaTracker {
         
         return `
             <div class="champion-card ${isCompleted ? 'completed' : ''} ${hasHighMastery ? 'high-mastery' : ''}" 
-                 data-champion="${champion.key}">
+                 data-champion="${champion.key}"
+                 oncontextmenu="tracker.showChampionDetails('${champion.key}'); return false;">
                 <div class="champion-image">
                     <img src="${champion.image_url || `https://ddragon.leagueoflegends.com/cdn/14.24.1/img/champion/${champion.id || champion.name}.png`}" 
                          alt="${champion.name}" 

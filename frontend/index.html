@@ -34,8 +34,24 @@
                 </div>
                 
                 <div class="player-info" id="player-info">
-                    <strong id="player-name"></strong> - Level <span id="player-level"></span>
-                    <br><span data-translate="mastery_loaded">Mastery data loaded!</span>
+                    <div class="profile-main">
+                        <strong id="player-name"></strong> - Level <span id="player-level"></span>
+                        <br><span data-translate="mastery_loaded">Mastery data loaded!</span>
+                    </div>
+                    <div class="profile-details">
+                        <div class="profile-item">
+                            <span class="profile-label" data-translate="summoner_code">Code:</span>
+                            <span class="profile-value" id="summoner-code"></span>
+                        </div>
+                        <div class="profile-item">
+                            <span class="profile-label" data-translate="last_updated">Updated:</span>
+                            <span class="profile-value" id="last-updated"></span>
+                        </div>
+                    </div>
+                    <div class="profile-actions">
+                        <button class="refresh-btn" onclick="fetchRiotData()" data-translate="refresh_data">Refresh Data</button>
+                        <button class="clear-btn" onclick="tracker.clearSummonerData()" data-translate="clear_data">Clear Data</button>
+                    </div>
                 </div>
             </div>
 
