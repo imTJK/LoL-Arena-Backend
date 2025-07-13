@@ -475,7 +475,7 @@ body {
     }
 }
 
-/* Champion Cards */
+/* Champion Cards with Mastery Glow System */
 .champion-card {
     background: rgba(0, 0, 0, 0.4);
     border-radius: 15px;
@@ -505,6 +505,60 @@ body {
     box-shadow: 0 0 15px rgba(200, 155, 60, 0.3);
 }
 
+/* Mastery Tier Glows - Applied to champion-card */
+.champion-card.points-0-9999 {
+    border-color: #8B4513;
+    box-shadow: 0 0 10px rgba(139, 69, 19, 0.4);
+}
+
+.champion-card.points-10000-24999 {
+    border-color: #4169E1;
+    box-shadow: 0 0 10px rgba(65, 105, 225, 0.4);
+}
+
+.champion-card.points-25000-49999 {
+    border-color: #32CD32;
+    box-shadow: 0 0 10px rgba(50, 205, 50, 0.4);
+}
+
+.champion-card.points-50000-99999 {
+    border-color: #FFD700;
+    box-shadow: 0 0 15px rgba(255, 215, 0, 0.5);
+}
+
+.champion-card.points-100000-199999 {
+    border-color: #FF4500;
+    box-shadow: 0 0 15px rgba(255, 69, 0, 0.5);
+}
+
+.champion-card.points-200000-499999 {
+    border-color: #FF1493;
+    box-shadow: 0 0 20px rgba(255, 20, 147, 0.6);
+}
+
+.champion-card.points-500000-999999 {
+    border-color: #9400D3;
+    box-shadow: 0 0 20px rgba(148, 0, 211, 0.6);
+}
+
+.champion-card.points-1000000-plus {
+    border: 3px solid;
+    border-image: linear-gradient(45deg, #FFD700, #FF0000, #00FF00, #0080FF, #FFD700) 1;
+    box-shadow: 0 0 25px rgba(255, 215, 0, 0.8);
+    animation: legendaryGlow 3s ease-in-out infinite;
+}
+
+@keyframes legendaryGlow {
+    0%, 100% { 
+        box-shadow: 0 0 25px rgba(255, 215, 0, 0.8);
+        filter: brightness(1);
+    }
+    50% { 
+        box-shadow: 0 0 35px rgba(255, 0, 0, 0.9);
+        filter: brightness(1.2);
+    }
+}
+
 .champion-image {
     width: 80px;
     height: 80px;
@@ -523,11 +577,6 @@ body {
     transition: all 0.3s ease;
 }
 
-.champion-card.high-mastery .champion-image {
-    border-color: #c89b3c;
-    box-shadow: 0 0 10px rgba(200, 155, 60, 0.5);
-}
-
 .champion-image img {
     width: 100%;
     height: 100%;
@@ -539,59 +588,10 @@ body {
     transform: scale(1.1);
 }
 
+/* Remove old mastery badge styles */
 .mastery-badge {
-    position: absolute;
-    top: -5px;
-    right: -5px;
-    background: #c89b3c;
-    color: #0f1419;
-    border-radius: 50%;
-    width: 25px;
-    height: 25px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 12px;
-    font-weight: bold;
-    border: 2px solid #f0e6d2;
-    position: relative;
-    overflow: hidden;
+    display: none;
 }
-
-.mastery-badge::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    border-radius: 50%;
-    z-index: -1;
-}
-
-/* Mastery Gradient Backgrounds based on points */
-.mastery-badge.points-0-9999::before { background: linear-gradient(135deg, #8B4513, #CD853F); }
-.mastery-badge.points-10000-24999::before { background: linear-gradient(135deg, #4169E1, #87CEEB); }
-.mastery-badge.points-25000-49999::before { background: linear-gradient(135deg, #32CD32, #90EE90); }
-.mastery-badge.points-50000-99999::before { background: linear-gradient(135deg, #FFD700, #FFF8DC); }
-.mastery-badge.points-100000-199999::before { background: linear-gradient(135deg, #FF4500, #FFA500); }
-.mastery-badge.points-200000-499999::before { background: linear-gradient(135deg, #FF1493, #FF69B4); }
-.mastery-badge.points-500000-999999::before { background: linear-gradient(135deg, #9400D3, #DA70D6); }
-.mastery-badge.points-1000000-plus::before { 
-    background: linear-gradient(135deg, #FFD700, #FF0000, #FFD700, #FF0000);
-    background-size: 200% 200%;
-    animation: masteryLegendary 2s ease-in-out infinite;
-}
-
-@keyframes masteryLegendary {
-    0%, 100% { background-position: 0% 50%; }
-    50% { background-position: 100% 50%; }
-}
-
-/* Legacy level badges (still show level number) */
-.mastery-badge.level-7::before { background: linear-gradient(135deg, #ff6b6b, #ff8e8e); }
-.mastery-badge.level-6::before { background: linear-gradient(135deg, #4ecdc4, #7fdddd); }
-.mastery-badge.level-5::before { background: linear-gradient(135deg, #45b7d1, #7bc8e0); }
 
 .champion-name {
     font-size: 1.1em;

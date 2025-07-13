@@ -531,7 +531,9 @@ async function initTranslations() {
       level: "Level", points: "Points", reset_confirm: "Do you really want to reset your Arena progress?",
       error: "Error", riot_id_format: "Riot ID must have format 'Name#TAG'",
       mastery_info: "Mastery Information", base_stats: "Base Stats",
-      lore: "Lore", passive: "Passive Ability"
+      lore: "Lore", passive: "Passive Ability", summoner_code: "Code",
+      last_updated: "Updated", refresh_data: "Refresh Data", clear_data: "Clear Data",
+      clear_confirm: "Clear all summoner data?"
     },
     de: {
       title: "LoL Arena Win Tracker", connect_account: "Riot Account verbinden",
@@ -548,7 +550,9 @@ async function initTranslations() {
       level: "Level", points: "Punkte", reset_confirm: "Willst du wirklich den Arena Fortschritt zurücksetzen?",
       error: "Fehler", riot_id_format: "Riot ID muss Format 'Name#TAG' haben",
       mastery_info: "Mastery Informationen", base_stats: "Grundwerte",
-      lore: "Geschichte", passive: "Passive Fähigkeit"
+      lore: "Geschichte", passive: "Passive Fähigkeit", summoner_code: "Code",
+      last_updated: "Aktualisiert", refresh_data: "Daten Aktualisieren", 
+      clear_data: "Daten Löschen", clear_confirm: "Alle Beschwörerdaten löschen?"
     }
   };
 

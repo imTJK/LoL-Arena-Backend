@@ -407,7 +407,8 @@ class ArenaTracker {
                 summoner_code: "Code",
                 last_updated: "Updated",
                 refresh_data: "Refresh Data",
-                clear_data: "Clear Data"
+                clear_data: "Clear Data",
+                clear_confirm: "Clear all summoner data?"
             },
             de: {
                 title: "LoL Arena Win Tracker",
@@ -456,7 +457,8 @@ class ArenaTracker {
                 summoner_code: "Code",
                 last_updated: "Aktualisiert",
                 refresh_data: "Daten Aktualisieren",
-                clear_data: "Daten Löschen"
+                clear_data: "Daten Löschen",
+                clear_confirm: "Alle Beschwörerdaten löschen?"
             }
         };
         return translations[this.currentLang] || translations.en;
@@ -614,7 +616,7 @@ class ArenaTracker {
             const points = mastery.championPoints.toLocaleString();
             const tierClass = this.getMasteryTierClass(mastery.championPoints);
             
-            masteryBadge = `<div class="mastery-badge level-${level} ${tierClass}">${points >= 1000000 ? '∞' : level}</div>`;
+            // Show mastery as border glow instead of badge
             masteryInfo = `
                 <div class="mastery-info">
                     ${this.translate('level')} ${level}<br>
@@ -627,7 +629,7 @@ class ArenaTracker {
         const roleDisplay = champion.role ? champion.role.charAt(0).toUpperCase() + champion.role.slice(1) : '';
         
         return `
-            <div class="champion-card ${isCompleted ? 'completed' : ''} ${hasHighMastery ? 'high-mastery' : ''}" 
+            <div class="champion-card ${isCompleted ? 'completed' : ''} ${hasHighMastery ? 'high-mastery' : ''} ${mastery ? this.getMasteryTierClass(mastery.championPoints) : ''}" 
                  data-champion="${champion.key}"
                  oncontextmenu="tracker.showChampionDetails('${champion.key}'); return false;">
                 <div class="champion-image">
@@ -635,7 +637,6 @@ class ArenaTracker {
                          alt="${champion.name}" 
                          loading="lazy"
                          onerror="this.style.display='none'; this.parentNode.innerHTML='${champion.name.substring(0, 3).toUpperCase()}';">
-                    ${masteryBadge}
                 </div>
                 <div class="champion-name">${champion.name}</div>
                 <div class="champion-role">
