@@ -1,4 +1,4 @@
-// server.js - Erweiterte Version mit PostgreSQL
+// server.js - Fixed with complete translations
 const express = require('express');
 const axios = require('axios');
 const cors = require('cors');
@@ -171,12 +171,12 @@ app.get('/api/champions', async (req, res) => {
     
     if (role && role !== 'all') {
       params.push(role);
-      query += ` AND role = $${params.length}`;
+      query += ` AND role = ${params.length}`;
     }
     
     if (search) {
       params.push(`%${search}%`);
-      query += ` AND LOWER(name) LIKE LOWER($${params.length})`;
+      query += ` AND LOWER(name) LIKE LOWER(${params.length})`;
     }
     
     query += ' ORDER BY name ASC';
@@ -240,6 +240,23 @@ app.post('/api/wins/:userIdentifier/:championKey', async (req, res) => {
   }
 });
 
+// Delete win (for reset functionality)
+app.delete('/api/wins/:userIdentifier/:championKey', async (req, res) => {
+  try {
+    const { userIdentifier, championKey } = req.params;
+    
+    await pool.query(
+      'UPDATE user_wins SET won = false WHERE user_identifier = $1 AND champion_key = $2',
+      [userIdentifier, championKey]
+    );
+    
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error deleting win:', error);
+    res.status(500).json({ error: 'Failed to delete win' });
+  }
+});
+
 // Get translations
 app.get('/api/translations/:lang', async (req, res) => {
   try {
@@ -267,26 +284,45 @@ app.get('/api/player/:gameName/:tagLine/:region', async (req, res) => {
   try {
     const { gameName, tagLine, region } = req.params;
     
-    // Fetch from Riot API (existing code)
     const axiosConfig = {
       headers: { 'X-Riot-Token': RIOT_API_KEY },
-      timeout: 10000
+      timeout: 15000
     };
-    
-    // Get account, summoner, and mastery data (existing logic)
-    // ... (keep existing Riot API calls)
-    
-    // Enhance with database champion info
-    const championsResult = await pool.query('SELECT * FROM champions');
-    const championMap = {};
-    championsResult.rows.forEach(champ => {
-      championMap[champ.key] = champ;
-    });
-    
-    // Return combined data
+
+    console.log(`🔍 Fetching data for: ${gameName}#${tagLine} in ${region}`);
+
+    // Step 1: Get account by Riot ID
+    const accountResponse = await axios.get(
+      `https://europe.api.riotgames.com/riot/account/v1/accounts/by-riot-id/${encodeURIComponent(gameName)}/${encodeURIComponent(tagLine)}`,
+      axiosConfig
+    );
+    const account = accountResponse.data;
+    console.log('✅ Account found:', account.puuid);
+
+    // Step 2: Get summoner by PUUID
+    const regionMap = {
+      'euw1': 'euw1', 'eun1': 'eun1', 'na1': 'na1', 'kr': 'kr', 'jp1': 'jp1'
+    };
+    const platformId = regionMap[region] || region;
+
+    const summonerResponse = await axios.get(
+      `https://${platformId}.api.riotgames.com/lol/summoner/v4/summoners/by-puuid/${account.puuid}`,
+      axiosConfig
+    );
+    const summoner = summonerResponse.data;
+    console.log('✅ Summoner found:', summoner.name);
+
+    // Step 3: Get champion masteries
+    const masteryResponse = await axios.get(
+      `https://${platformId}.api.riotgames.com/lol/champion-mastery/v4/champion-masteries/by-puuid/${account.puuid}`,
+      axiosConfig
+    );
+    console.log('✅ Masteries found:', masteryResponse.data.length);
+
     res.json({
-      // ... existing player data
-      champions: championMap,
+      account,
+      summoner,
+      masteries: masteryResponse.data || [], // Ensure it's always an array
       apiInfo: {
         rateLimits: 'Production API',
         dataSource: 'Riot API + PostgreSQL',
@@ -294,45 +330,121 @@ app.get('/api/player/:gameName/:tagLine/:region', async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('API Error:', error);
-    res.status(500).json({ error: 'Failed to fetch player data' });
+    console.error('❌ API Error:', error.response?.data || error.message);
+    if (error.response?.status === 404) {
+      res.status(404).json({ error: 'Player not found. Check the Riot ID format (Name#TAG)' });
+    } else if (error.response?.status === 403) {
+      res.status(403).json({ error: 'API key expired or invalid' });
+    } else if (error.response?.status === 429) {
+      res.status(429).json({ error: 'Rate limit exceeded. Please try again later.' });
+    } else {
+      res.status(500).json({ error: 'Failed to fetch player data: ' + (error.response?.data?.message || error.message) });
+    }
   }
 });
 
-// Initialize translations
+// Initialize translations with complete data
 async function initTranslations() {
   const defaultTranslations = {
     en: {
       title: "LoL Arena Win Tracker",
       connect_account: "Connect Riot Account",
+      riot_id_placeholder: "Summoner Name#TAG",
       load_mastery: "Load Mastery",
+      mastery_loaded: "Mastery data loaded!",
       arena_wins: "Arena Wins",
       champions: "Champions",
       with_mastery: "With Mastery",
       progress: "Progress",
+      all: "All",
+      completed: "Won",
+      pending: "Pending",
       high_mastery: "High Mastery (50k+)",
-      // ... add all translations
+      assassin: "Assassin",
+      fighter: "Fighter",
+      mage: "Mage",
+      marksman: "Marksman",
+      support: "Support",
+      tank: "Tank",
+      sort_by: "Sort by:",
+      alphabetical: "Alphabetical",
+      mastery_points: "Mastery Points",
+      mastery_level: "Mastery Level",
+      last_played: "Last Played",
+      loading: "Loading mastery data...",
+      reset_progress: "Reset Arena Progress",
+      load_demo: "Load Demo Data",
+      level: "Level",
+      points: "Points",
+      last: "Last",
+      reset_confirm: "Do you really want to reset your Arena progress?",
+      error: "Error",
+      riot_id_format: "Riot ID must have format 'Name#TAG'",
+      search_placeholder: "Search champion...",
+      arena_god_challenge: "Arena God Challenge",
+      bronze_milestone: "10 Wins - Bronze Arena God",
+      silver_milestone: "25 Wins - Silver Arena God",
+      gold_milestone: "45 Wins - Gold Arena God",
+      ultimate_milestone: "60 Wins - ULTIMATE ARENA GOD!"
     },
     de: {
       title: "LoL Arena Win Tracker",
       connect_account: "Riot Account verbinden",
+      riot_id_placeholder: "Beschwörername#TAG",
       load_mastery: "Mastery laden",
+      mastery_loaded: "Mastery Daten geladen!",
       arena_wins: "Arena Siege",
       champions: "Champions",
       with_mastery: "Mit Mastery",
       progress: "Fortschritt",
+      all: "Alle",
+      completed: "Gewonnen",
+      pending: "Offen",
       high_mastery: "Hohe Mastery (50k+)",
-      // ... add all translations
+      assassin: "Assassine",
+      fighter: "Kämpfer",
+      mage: "Magier",
+      marksman: "Schütze",
+      support: "Unterstützer",
+      tank: "Tank",
+      sort_by: "Sortierung:",
+      alphabetical: "Alphabetisch",
+      mastery_points: "Mastery Punkte",
+      mastery_level: "Mastery Level",
+      last_played: "Zuletzt gespielt",
+      loading: "Lade Mastery Daten...",
+      reset_progress: "Arena Fortschritt zurücksetzen",
+      load_demo: "Demo Daten laden",
+      level: "Level",
+      points: "Punkte",
+      last: "Zuletzt",
+      reset_confirm: "Willst du wirklich den Arena Fortschritt zurücksetzen?",
+      error: "Fehler",
+      riot_id_format: "Riot ID muss Format 'Name#TAG' haben",
+      search_placeholder: "Champion suchen...",
+      arena_god_challenge: "Arena Gott Herausforderung",
+      bronze_milestone: "10 Siege - Bronze Arena Gott",
+      silver_milestone: "25 Siege - Silber Arena Gott",
+      gold_milestone: "45 Siege - Gold Arena Gott",
+      ultimate_milestone: "60 Siege - ULTIMATIVER ARENA GOTT!"
     }
   };
 
-  for (const [lang, translations] of Object.entries(defaultTranslations)) {
-    for (const [key, value] of Object.entries(translations)) {
-      await pool.query(
-        'INSERT INTO translations (lang_code, key, value) VALUES ($1, $2, $3) ON CONFLICT (lang_code, key) DO NOTHING',
-        [lang, key, value]
-      );
+  try {
+    for (const [lang, translations] of Object.entries(defaultTranslations)) {
+      for (const [key, value] of Object.entries(translations)) {
+        await pool.query(
+          `INSERT INTO translations (lang_code, key, value) 
+           VALUES ($1, $2, $3) 
+           ON CONFLICT (lang_code, key) 
+           DO UPDATE SET value = $3`,
+          [lang, key, value]
+        );
+      }
     }
+    console.log('✅ Translations initialized');
+  } catch (error) {
+    console.error('❌ Error initializing translations:', error);
   }
 }
 
@@ -360,6 +472,16 @@ app.get('/health', async (req, res) => {
   }
 });
 
+// API info endpoint
+app.get('/api/info', (req, res) => {
+  res.json({
+    version: '2.0.0',
+    features: ['PostgreSQL', 'Translations', 'Win Tracking', 'Champion Data'],
+    endpoints: ['/api/champions', '/api/wins', '/api/translations', '/api/player'],
+    status: 'Production Ready'
+  });
+});
+
 // Start server
 async function start() {
   await initDatabase();
@@ -374,6 +496,7 @@ async function start() {
     console.log(`🚀 Server running on port ${PORT}`);
     console.log(`📊 PostgreSQL connected`);
     console.log(`🔄 Nightly updates scheduled`);
+    console.log(`🌍 Translations: EN, DE`);
   });
 }
 

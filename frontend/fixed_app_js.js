@@ -412,9 +412,6 @@ class ArenaTracker {
             this.currentSort = e.target.value;
             this.render();
         });
-        
-        // Apply translations after all event listeners are set
-        this.applyTranslations();
     }
 
     showLoading(show) {
