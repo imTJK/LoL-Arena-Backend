@@ -599,17 +599,27 @@ function mapRole(tag) {
 async function updateChampionsData() {
   try {
     console.log('🔄 Updating champions data...');
+    
+    // Get the latest version from Riot API
     const versionResponse = await axios.get('https://ddragon.leagueoflegends.com/api/versions.json');
     const latestVersion = versionResponse.data[0];
+    console.log(`📦 Using Data Dragon version: ${latestVersion}`);
     
+    // Get all champions data
     const championsResponse = await axios.get(
       `https://ddragon.leagueoflegends.com/cdn/${latestVersion}/data/en_US/champion.json`
     );
     
     const champions = Object.values(championsResponse.data.data);
+    console.log(`📊 Found ${champions.length} champions to update`);
+    
+    let updatedCount = 0;
+    let errorCount = 0;
     
     for (const champ of champions) {
       try {
+        console.log(`🔄 Processing ${champ.name} (${champ.id})...`);
+        
         // Get detailed champion data
         const detailResponse = await axios.get(
           `https://ddragon.leagueoflegends.com/cdn/${latestVersion}/data/en_US/champion/${champ.id}.json`
@@ -617,43 +627,95 @@ async function updateChampionsData() {
         
         const detailed = detailResponse.data.data[champ.id];
         
-        await pool.query(`
+        // Enhanced image URLs with fallbacks
+        const imageUrl = `https://ddragon.leagueoflegends.com/cdn/${latestVersion}/img/champion/${champ.id}.png`;
+        const splashArtUrl = `https://ddragon.leagueoflegends.com/cdn/img/champion/splash/${champ.id}_0.jpg`;
+        
+        // Insert or update champion
+        const result = await pool.query(`
           INSERT INTO champions (key, name, title, role, tags, difficulty, image_url, splash_art_url, lore, passive_name, passive_description, stats, spells) 
           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) 
           ON CONFLICT (key) DO UPDATE SET 
-            name = $2, title = $3, role = $4, tags = $5, difficulty = $6,
-            image_url = $7, splash_art_url = $8, lore = $9,
-            passive_name = $10, passive_description = $11,
-            stats = $12, spells = $13, updated_at = CURRENT_TIMESTAMP
+            name = EXCLUDED.name, 
+            title = EXCLUDED.title, 
+            role = EXCLUDED.role, 
+            tags = EXCLUDED.tags, 
+            difficulty = EXCLUDED.difficulty,
+            image_url = EXCLUDED.image_url, 
+            splash_art_url = EXCLUDED.splash_art_url, 
+            lore = EXCLUDED.lore,
+            passive_name = EXCLUDED.passive_name, 
+            passive_description = EXCLUDED.passive_description,
+            stats = EXCLUDED.stats, 
+            spells = EXCLUDED.spells, 
+            updated_at = CURRENT_TIMESTAMP
+          RETURNING id
         `, [
           champ.key,
           champ.name,
-          detailed.title,
+          detailed.title || champ.title,
           mapRole(detailed.tags[0]),
           detailed.tags,
           detailed.info.difficulty,
-          `https://ddragon.leagueoflegends.com/cdn/${latestVersion}/img/champion/${champ.id}.png`,
-          `https://ddragon.leagueoflegends.com/cdn/img/champion/splash/${champ.id}_0.jpg`,
-          detailed.lore,
-          detailed.passive.name,
-          detailed.passive.description,
+          imageUrl,
+          splashArtUrl,
+          detailed.lore || '',
+          detailed.passive?.name || '',
+          detailed.passive?.description || '',
           JSON.stringify(detailed.stats),
           JSON.stringify(detailed.spells)
         ]);
         
+        updatedCount++;
+        console.log(`✅ ${champ.name} updated successfully`);
+        
         // Small delay to avoid overwhelming the API
-        await sleep(100);
+        await sleep(200);
         
       } catch (error) {
-        console.error(`Error updating champion ${champ.name}:`, error.message);
+        errorCount++;
+        console.error(`❌ Error updating champion ${champ.name}:`, error.message);
+        
+        // Continue with next champion instead of stopping
+        continue;
       }
     }
     
-    console.log('✅ Champions updated');
+    console.log(`✅ Champions update completed!`);
+    console.log(`📊 Updated: ${updatedCount}, Errors: ${errorCount}, Total: ${champions.length}`);
+    
+    // Verify specific champions like Yunaara
+    const yunaara = champions.find(c => c.name.toLowerCase().includes('yunaara'));
+    if (yunaara) {
+      console.log(`🎯 Yunaara found and processed: ${yunaara.name} (Key: ${yunaara.key})`);
+    } else {
+      console.log(`⚠️ Yunaara not found in current Data Dragon version ${latestVersion}`);
+    }
+    
   } catch (error) {
-    console.error('❌ Champion update error:', error);
+    console.error('❌ Champion update error:', error.message);
+    throw error;
   }
 }
+
+// Debug endpoint to check for specific champions
+app.get('/api/champions/search/:name', async (req, res) => {
+  try {
+    const { name } = req.params;
+    const result = await pool.query(
+      'SELECT * FROM champions WHERE LOWER(name) LIKE LOWER($1) ORDER BY name',
+      [`%${name}%`]
+    );
+    
+    res.json({
+      query: name,
+      found: result.rows.length,
+      champions: result.rows
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Search failed', details: error.message });
+  }
+});
 
 // Start server
 async function start() {

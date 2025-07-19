@@ -603,6 +603,68 @@ class ArenaTracker {
         });
     }
 
+    async updateChampions() {
+    try {
+        this.showLoading(true);
+        console.log('🔄 Triggering champion update...');
+        
+        const response = await fetch(`${this.apiUrl}/api/update-champions`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+        });
+        
+        if (!response.ok) {
+            throw new Error(`Update failed: ${response.status}`);
+        }
+        
+        const result = await response.json();
+        console.log('✅ Champions updated:', result.message);
+        
+        // Reload champions data
+        await this.loadChampions();
+        this.render();
+        
+        // Show success message
+        const successDiv = document.createElement('div');
+        successDiv.className = 'success-message';
+        successDiv.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 255, 0, 0.2);
+            color: #00ff00;
+            padding: 15px 20px;
+            border-radius: 10px;
+            border: 1px solid #00ff00;
+            z-index: 1000;
+            animation: slideIn 0.3s ease;
+        `;
+        successDiv.textContent = result.message;
+        document.body.appendChild(successDiv);
+        
+        setTimeout(() => successDiv.remove(), 5000);
+        
+        } catch (error) {
+            console.error('❌ Update failed:', error);
+            this.showError(`Champion update failed: ${error.message}`);
+        } finally {
+            this.showLoading(false);
+        }
+    }
+
+    async searchChampion(name) {
+    try {
+        const response = await fetch(`${this.apiUrl}/api/champions/search/${encodeURIComponent(name)}`);
+        const result = await response.json();
+        
+        console.log(`🔍 Search results for "${name}":`, result);
+        return result;
+        } catch (error) {
+            console.error('Search failed:', error);
+            return null;
+        }
+    }
+
     createChampionCard(champion) {
         const isCompleted = this.wins.has(champion.key);
         const mastery = this.masteryData[champion.key];
@@ -797,3 +859,14 @@ window.loadDemoData = () => {
     
     tracker.render();
 };
+
+const updateButton = `
+<div style="text-align: center; margin: 20px 0;">
+    <button class="fetch-btn" onclick="updateChampions()" style="background: rgba(200, 155, 60, 0.7);">
+        🔄 Update Champions Database
+    </button>
+    <button class="fetch-btn" onclick="searchYunaara()" style="background: rgba(100, 150, 255, 0.7); margin-left: 10px;">
+        🔍 Search Yunaara
+    </button>
+</div>
+`;
